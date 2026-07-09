@@ -132,13 +132,13 @@ export default function Header() {
           >
             <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
               <Link
-                href="#"
+                href="/login"
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all h-8 rounded-md px-3 text-xs text-[#62666d] hover:bg-[#08090a]/5 hover:text-[#08090a]"
               >
                 <span>Sign In</span>
               </Link>
               <Link
-                href="#"
+                href="/contact"
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all shadow-sm shadow-[#08090a]/10 border border-transparent bg-[#ffffff] ring-1 ring-[#08090a]/10 duration-200 hover:bg-[#f7f8f8]/50 h-8 rounded-md px-3 text-xs text-[#08090a]"
               >
                 <span>Contact Sales</span>
