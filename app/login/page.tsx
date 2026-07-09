@@ -1,6 +1,7 @@
 'use client';
 
 import {useState, type FormEvent} from 'react';
+import Link from 'next/link';
 import {ApiClient} from '@/lib/api';
 
 export default function LoginPage() {
@@ -29,7 +30,7 @@ export default function LoginPage() {
       <main className="bg-background">
         <div className="grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6">
           <div className="m-auto w-full max-w-72 self-center text-center">
-            <a aria-label="go home" className="mx-auto flex size-10 *:m-auto" href="/">
+            <Link aria-label="go home" className="mx-auto flex size-10 *:m-auto" href="/">
               <svg className="size-7" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   fillRule="evenodd"
@@ -44,7 +45,7 @@ export default function LoginPage() {
                   </linearGradient>
                 </defs>
               </svg>
-            </a>
+            </Link>
             <h1 className="mb-10 mt-6 text-xl font-semibold">Log in to Ada2y</h1>
             <div className="space-y-2">
               <form className="space-y-5" onSubmit={handleSubmit}>
