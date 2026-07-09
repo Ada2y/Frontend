@@ -5,11 +5,7 @@ interface ApiError {
 }
 
 export class ApiClient {
-  static async register(data: {
-    email: string;
-    full_name: string;
-    password: string;
-  }) {
+  static async register(data: {email: string; full_name: string; password: string}) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},

@@ -14,7 +14,10 @@ export default function LoginPage() {
     setLoading(true);
     const form = new FormData(e.currentTarget);
     try {
-      const tokens = await ApiClient.login(form.get('email') as string, form.get('password') as string);
+      const tokens = await ApiClient.login(
+        form.get('email') as string,
+        form.get('password') as string
+      );
       localStorage.setItem('access_token', tokens.access_token);
       localStorage.setItem('refresh_token', tokens.refresh_token);
       window.location.href = '/';
@@ -31,7 +34,12 @@ export default function LoginPage() {
         <div className="grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6">
           <div className="m-auto w-full max-w-72 self-center text-center">
             <Link aria-label="go home" className="mx-auto flex size-10 *:m-auto" href="/">
-              <svg className="size-7" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                className="size-7"
+                viewBox="0 0 180 220"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <path
                   fillRule="evenodd"
                   clipRule="evenodd"
@@ -39,7 +47,14 @@ export default function LoginPage() {
                   fill="url(#paint_logo)"
                 />
                 <defs>
-                  <linearGradient id="paint_logo" x1="90" y1="0" x2="90" y2="220" gradientUnits="userSpaceOnUse">
+                  <linearGradient
+                    id="paint_logo"
+                    x1="90"
+                    y1="0"
+                    x2="90"
+                    y2="220"
+                    gradientUnits="userSpaceOnUse"
+                  >
                     <stop stopColor="#5e6ad2" />
                     <stop offset="1" stopColor="#22c55e" />
                   </linearGradient>
@@ -50,10 +65,15 @@ export default function LoginPage() {
             <div className="space-y-2">
               <form className="space-y-5" onSubmit={handleSubmit}>
                 {error && (
-                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>
+                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {error}
+                  </div>
                 )}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none block text-left" htmlFor="email">
+                  <label
+                    className="text-sm font-medium leading-none block text-left"
+                    htmlFor="email"
+                  >
                     Email
                   </label>
                   <input
@@ -66,7 +86,10 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none block text-left" htmlFor="password">
+                  <label
+                    className="text-sm font-medium leading-none block text-left"
+                    htmlFor="password"
+                  >
                     Password
                   </label>
                   <input

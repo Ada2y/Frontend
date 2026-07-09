@@ -4,7 +4,9 @@ export default function ContactPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mx-auto max-w-4xl">
           <div className="text-center">
-            <h1 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">Contact us</h1>
+            <h1 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">
+              Contact us
+            </h1>
             <p className="text-muted-foreground mt-4 text-balance text-lg">
               Find answers to your questions and get support for our services.
             </p>
@@ -18,7 +20,10 @@ export default function ContactPage() {
             <form className="space-y-6 mt-12">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none block text-left" htmlFor="first-name">
+                  <label
+                    className="text-sm font-medium leading-none block text-left"
+                    htmlFor="first-name"
+                  >
                     First name
                   </label>
                   <input
@@ -30,7 +35,10 @@ export default function ContactPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none block text-left" htmlFor="last-name">
+                  <label
+                    className="text-sm font-medium leading-none block text-left"
+                    htmlFor="last-name"
+                  >
                     Last name
                   </label>
                   <input
@@ -55,7 +63,10 @@ export default function ContactPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium leading-none block text-left" htmlFor="company">
+                <label
+                  className="text-sm font-medium leading-none block text-left"
+                  htmlFor="company"
+                >
                   Company
                 </label>
                 <input
@@ -67,7 +78,10 @@ export default function ContactPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium leading-none block text-left" htmlFor="message">
+                <label
+                  className="text-sm font-medium leading-none block text-left"
+                  htmlFor="message"
+                >
                   Message
                 </label>
                 <textarea
@@ -90,7 +104,10 @@ export default function ContactPage() {
           <div className="mx-auto mt-6 grid max-w-xl gap-4 sm:grid-cols-2">
             <div className="flex flex-col space-y-2.5 p-6 md:p-12">
               <h2 className="text-muted-foreground text-sm font-medium">Collaborate</h2>
-              <a className="font-medium hover:underline hover:text-primary" href="mailto:contact@ada2y.com">
+              <a
+                className="font-medium hover:underline hover:text-primary"
+                href="mailto:contact@ada2y.com"
+              >
                 contact@ada2y.com
               </a>
               <a className="font-medium hover:underline hover:text-primary" href="tel:+1234567890">
@@ -99,7 +116,10 @@ export default function ContactPage() {
             </div>
             <div className="flex flex-col space-y-2.5 p-6 md:p-12">
               <h2 className="text-muted-foreground text-sm font-medium">Press</h2>
-              <a className="font-medium hover:underline hover:text-primary" href="mailto:press@ada2y.com">
+              <a
+                className="font-medium hover:underline hover:text-primary"
+                href="mailto:press@ada2y.com"
+              >
                 press@ada2y.com
               </a>
               <a className="font-medium hover:underline hover:text-primary" href="tel:+1234567890">
