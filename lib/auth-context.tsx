@@ -42,7 +42,20 @@ export function AuthProvider({children}: {children: ReactNode}) {
   }
 
   useEffect(() => {
-    fetchUser();
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await ApiClient.me();
+        if (!cancelled) setUser(me);
+      } catch {
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return <AuthContext.Provider value={{user, loading, logout, refreshUser}}>{children}</AuthContext.Provider>;

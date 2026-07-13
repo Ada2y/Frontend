@@ -9,25 +9,30 @@ export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error');
+  const [message, setMessage] = useState(token ? '' : 'No verification token provided');
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      setMessage('No verification token provided');
-      return;
-    }
+    if (!token) return;
 
-    ApiClient.verifyEmail(token)
-      .then(() => {
-        setStatus('success');
-        setMessage('Email verified successfully');
-      })
-      .catch((err) => {
-        setStatus('error');
-        setMessage(err instanceof Error ? err.message : 'Verification failed');
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        await ApiClient.verifyEmail(token);
+        if (!cancelled) {
+          setStatus('success');
+          setMessage('Email verified successfully');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setStatus('error');
+          setMessage(err instanceof Error ? err.message : 'Verification failed');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   return (
