@@ -1,9 +1,13 @@
+'use client';
+
+import {useState} from 'react';
 import {Apple, ShieldAlert} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
 import NutritionStatusBadge from '@/app/(dashboard)/_components/NutritionStatusBadge';
 import {mockNutritionAutoApproved, mockNutritionPendingReview} from '@/lib/mocks/nutrition';
 import type {NutritionRecommendation} from '@/lib/api';
+import {cn} from '@/lib/utils';
 
 const macroLabels: {key: keyof NutritionRecommendation['macros']; label: string; unit: string}[] = [
   {key: 'calories', label: 'Calories', unit: 'kcal'},
@@ -54,7 +58,40 @@ function NutritionCard({rec}: {rec: NutritionRecommendation}) {
   );
 }
 
+function DevStatusToggle({
+  value,
+  onChange
+}: {
+  value: NutritionRecommendation['status'];
+  onChange: (status: NutritionRecommendation['status']) => void;
+}) {
+  if (process.env.NODE_ENV === 'production') return null;
+
+  const options: NutritionRecommendation['status'][] = ['auto_approved', 'pending_review'];
+
+  return (
+    <div className="inline-flex items-center gap-1 self-start rounded-md bg-muted p-1 text-xs">
+      <span className="px-2 text-muted-foreground">dev: mock status</span>
+      {options.map((opt) => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={cn(
+            'rounded px-2 py-1 font-medium transition-colors',
+            value === opt
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function NutritionPage() {
+  const [mockStatus, setMockStatus] = useState<NutritionRecommendation['status']>('auto_approved');
   const hasData = true;
 
   if (!hasData) {
@@ -75,19 +112,23 @@ export default function NutritionPage() {
     );
   }
 
+  const recommendation =
+    mockStatus === 'auto_approved' ? mockNutritionAutoApproved : mockNutritionPendingReview;
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Nutrition</h1>
-        <p className="text-sm text-muted-foreground">
-          Clinically aware nutrition advice based on your training load and medical conditions.
-        </p>
+      <div className="flex flex-col gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Nutrition</h1>
+          <p className="text-sm text-muted-foreground">
+            Clinically aware nutrition advice based on your training load and medical conditions.
+          </p>
+        </div>
+        <DevStatusToggle value={mockStatus} onChange={setMockStatus} />
       </div>
 
-      {/* Both states rendered to verify the status branch — real page will show one at a time */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <NutritionCard rec={mockNutritionAutoApproved} />
-        <NutritionCard rec={mockNutritionPendingReview} />
+      <div className="max-w-xl">
+        <NutritionCard rec={recommendation} />
       </div>
     </div>
   );
