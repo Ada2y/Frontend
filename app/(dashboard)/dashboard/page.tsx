@@ -1,5 +1,6 @@
 import {LayoutDashboard} from 'lucide-react';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
+import OnboardingBanner from '@/app/(dashboard)/_components/OnboardingBanner';
 
 export default function DashboardOverviewPage() {
   return (
@@ -10,6 +11,7 @@ export default function DashboardOverviewPage() {
           Your latest training plan and nutrition status.
         </p>
       </div>
+      <OnboardingBanner />
       <EmptyState
         icon={LayoutDashboard}
         title="No sessions yet"
