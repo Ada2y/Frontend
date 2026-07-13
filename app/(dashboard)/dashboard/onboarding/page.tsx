@@ -1,6 +1,6 @@
 'use client';
 
-import {useRef, useState, useSyncExternalStore} from 'react';
+import {useState, useSyncExternalStore} from 'react';
 import Link from 'next/link';
 import {CheckCircle} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent, CardFooter} from '@/components/ui/card';
@@ -55,19 +55,15 @@ export default function OnboardingPage() {
 
   const [step, setStep] = useState(1);
   const [completed, setCompleted] = useState(false);
-  const synced = useRef(false);
 
-  let initialForm = INITIAL_FORM;
-  if (!synced.current) {
-    synced.current = true;
+  const [form, setForm] = useState<OnboardingForm>(() => {
     if (storedJson) {
       try {
-        initialForm = {...INITIAL_FORM, ...JSON.parse(storedJson)};
+        return {...INITIAL_FORM, ...JSON.parse(storedJson)};
       } catch {}
     }
-  }
-
-  const [form, setForm] = useState<OnboardingForm>(initialForm);
+    return INITIAL_FORM;
+  });
 
   function update<K extends keyof OnboardingForm>(key: K, value: OnboardingForm[K]) {
     setForm((prev) => {

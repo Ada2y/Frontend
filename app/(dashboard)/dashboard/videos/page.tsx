@@ -38,7 +38,10 @@ export default function VideosPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const selectedFileRef = useRef<File | null>(null);
-  selectedFileRef.current = selectedFile;
+
+  useEffect(() => {
+    selectedFileRef.current = selectedFile;
+  }, [selectedFile]);
 
   useEffect(() => {
     return () => {
