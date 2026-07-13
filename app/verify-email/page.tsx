@@ -1,18 +1,20 @@
 'use client';
 
-import {useEffect, useState} from 'react';
+import {Suspense, useEffect, useState} from 'react';
 import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import {ApiClient} from '@/lib/api';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     token ? 'loading' : 'error'
   );
-  const [message, setMessage] = useState(token ? '' : 'No verification token provided');
+  const [message, setMessage] = useState(
+    token ? '' : 'No verification token provided'
+  );
 
   useEffect(() => {
     if (!token) return;
@@ -28,7 +30,9 @@ export default function VerifyEmailPage() {
       } catch (err) {
         if (!cancelled) {
           setStatus('error');
-          setMessage(err instanceof Error ? err.message : 'Verification failed');
+          setMessage(
+            err instanceof Error ? err.message : 'Verification failed'
+          );
         }
       }
     })();
@@ -42,7 +46,11 @@ export default function VerifyEmailPage() {
       <main className="bg-background">
         <div className="grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6">
           <div className="m-auto w-full max-w-72 self-center text-center">
-            <Link aria-label="go home" className="mx-auto flex size-10 *:m-auto" href="/">
+            <Link
+              aria-label="go home"
+              className="mx-auto flex size-10 *:m-auto"
+              href="/"
+            >
               <svg
                 className="size-7"
                 viewBox="0 0 180 220"
@@ -70,10 +78,14 @@ export default function VerifyEmailPage() {
                 </defs>
               </svg>
             </Link>
-            <h1 className="mb-10 mt-6 text-xl font-semibold">Verify your email</h1>
+            <h1 className="mb-10 mt-6 text-xl font-semibold">
+              Verify your email
+            </h1>
             <div className="space-y-4">
               {status === 'loading' && (
-                <p className="text-muted-foreground text-sm">Verifying your email...</p>
+                <p className="text-muted-foreground text-sm">
+                  Verifying your email...
+                </p>
               )}
               {status === 'success' && (
                 <>
@@ -106,5 +118,13 @@ export default function VerifyEmailPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
