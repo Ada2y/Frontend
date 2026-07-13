@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+    "reference": {
+        "backend": {
+            "path": "E:/ada2y-backend",
+            "description": "Backend API repo — check this for auth/login endpoints and API routes"
+        }
+    }
+}

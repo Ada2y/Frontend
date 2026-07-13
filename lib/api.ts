@@ -152,7 +152,8 @@ export class ApiClient {
   }
 
   static logout() {
-    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+    const refreshToken =
+      typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
     if (refreshToken) {
       fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',

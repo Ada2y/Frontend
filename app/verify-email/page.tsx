@@ -9,7 +9,9 @@ export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+    token ? 'loading' : 'error'
+  );
   const [message, setMessage] = useState(token ? '' : 'No verification token provided');
 
   useEffect(() => {

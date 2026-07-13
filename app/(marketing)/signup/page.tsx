@@ -13,7 +13,10 @@ declare global {
             client_id: string;
             callback: (response: {credential: string}) => void;
           }) => void;
-          renderButton: (parent: HTMLElement, config: {theme: string; size: string; text: string}) => void;
+          renderButton: (
+            parent: HTMLElement,
+            config: {theme: string; size: string; text: string}
+          ) => void;
         };
       };
     };
