@@ -1,8 +1,27 @@
 'use client';
 
-import {useState, type FormEvent} from 'react';
+import {useState, useEffect, type FormEvent} from 'react';
 import Link from 'next/link';
 import {ApiClient} from '@/lib/api';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: {credential: string}) => void;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement,
+            config: {theme: string; size: string; text: string}
+          ) => void;
+        };
+      };
+    };
+  }
+}
 
 export default function LoginPage() {
   const [error, setError] = useState('');
@@ -27,6 +46,56 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+    function tryInit() {
+      if (cancelled || !clientId) return;
+      if (!window.google) return;
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response: {credential: string}) => {
+          ApiClient.googleLogin(response.credential)
+            .then((tokens) => {
+              localStorage.setItem('access_token', tokens.access_token);
+              localStorage.setItem('refresh_token', tokens.refresh_token);
+              window.location.href = '/';
+            })
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : 'Google login failed');
+            });
+        }
+      });
+
+      const container = document.getElementById('google-signin-button');
+      if (container) {
+        container.innerHTML = '';
+        window.google.accounts.id.renderButton(container, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with'
+        });
+      }
+    }
+
+    tryInit();
+
+    const interval = setInterval(() => {
+      if (document.getElementById('google-signin-button')?.innerHTML) {
+        clearInterval(interval);
+        return;
+      }
+      tryInit();
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="selection:bg-foreground/10 selection:text-foreground bg-background">
@@ -109,9 +178,18 @@ export default function LoginPage() {
                   {loading ? 'Signing in...' : 'Continue'}
                 </button>
               </form>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-foreground/10" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-background text-muted-foreground px-2">or</span>
+                </div>
+              </div>
+              <div id="google-signin-button" className="w-full flex justify-center" />
               <a
                 className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 hover:bg-foreground/[0.04] hover:text-foreground h-8 rounded-md px-3 text-xs not-hover:text-muted-foreground w-full"
-                href="#"
+                href="/forgot-password"
               >
                 Forgot your password?
               </a>

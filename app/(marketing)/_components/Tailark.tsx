@@ -84,6 +84,7 @@ export default function Tailark() {
                     height={768}
                     className="h-full w-full object-cover"
                     sizes="(max-width: 768px) 100vw, 1104px"
+                    loading="eager"
                   />
                 </div>
               </div>
