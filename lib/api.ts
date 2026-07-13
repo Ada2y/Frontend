@@ -28,15 +28,28 @@ export interface Team {
   player_count: number;
 }
 
+export type SessionStatus = 'pending' | 'completed' | 'skipped';
+
+export interface TrainingPlanExercise {
+  name: string;
+  sets: number;
+  reps: number;
+  load: string;
+  rest_seconds: number;
+}
+
+export interface TrainingPlanDay {
+  day: string;
+  exercises: TrainingPlanExercise[];
+  is_rest_day: boolean;
+  status: SessionStatus;
+}
+
 export interface TrainingPlan {
   id: string;
   athlete_id: string;
   week_start: string;
-  days: {
-    day: string;
-    exercises: {name: string; sets: number; reps: number; load: string}[];
-    is_rest_day: boolean;
-  }[];
+  days: TrainingPlanDay[];
 }
 
 export interface NutritionRecommendation {
