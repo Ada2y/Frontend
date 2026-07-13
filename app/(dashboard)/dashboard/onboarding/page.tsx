@@ -1,17 +1,11 @@
 'use client';
 
-import {useEffect, useState} from 'react';
+import {useRef, useState, useSyncExternalStore} from 'react';
 import Link from 'next/link';
-import {CheckCircle, ClipboardList} from 'lucide-react';
+import {CheckCircle} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent, CardFooter} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
-import {
-  MOCK_SPORTS,
-  MOCK_FITNESS_LEVELS,
-  MOCK_MEDICAL_CONDITIONS,
-  type Sport,
-  type FitnessLevel
-} from '@/lib/mocks/athlete';
+import {MOCK_SPORTS, MOCK_FITNESS_LEVELS, MOCK_MEDICAL_CONDITIONS} from '@/lib/mocks/athlete';
 
 interface MedicalEntry {
   conditionId: number;
@@ -43,13 +37,9 @@ const INITIAL_FORM: OnboardingForm = {
 
 const TOTAL_STEPS = 4;
 
-function loadForm(): OnboardingForm {
-  if (typeof window === 'undefined') return INITIAL_FORM;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return {...INITIAL_FORM, ...JSON.parse(raw)};
-  } catch {}
-  return INITIAL_FORM;
+function subscribe(callback: () => void) {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
 }
 
 function saveForm(form: OnboardingForm) {
@@ -57,59 +47,81 @@ function saveForm(form: OnboardingForm) {
 }
 
 export default function OnboardingPage() {
+  const storedJson = useSyncExternalStore(
+    subscribe,
+    () => localStorage.getItem(STORAGE_KEY),
+    () => null
+  );
+
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState<OnboardingForm>(INITIAL_FORM);
   const [completed, setCompleted] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const synced = useRef(false);
 
-  useEffect(() => {
-    setForm(loadForm());
-    setHydrated(true);
-  }, []);
+  let initialForm = INITIAL_FORM;
+  if (!synced.current) {
+    synced.current = true;
+    if (storedJson) {
+      try {
+        initialForm = {...INITIAL_FORM, ...JSON.parse(storedJson)};
+      } catch {}
+    }
+  }
 
-  useEffect(() => {
-    if (hydrated) saveForm(form);
-  }, [form, hydrated]);
+  const [form, setForm] = useState<OnboardingForm>(initialForm);
 
   function update<K extends keyof OnboardingForm>(key: K, value: OnboardingForm[K]) {
-    setForm((prev) => ({...prev, [key]: value}));
+    setForm((prev) => {
+      const next = {...prev, [key]: value};
+      saveForm(next);
+      return next;
+    });
   }
 
   function toggleCondition(conditionId: number) {
     setForm((prev) => {
       const exists = prev.medicalConditions.find((c) => c.conditionId === conditionId);
-      if (exists) {
-        return {
-          ...prev,
-          medicalConditions: prev.medicalConditions.filter((c) => c.conditionId !== conditionId)
-        };
-      }
-      return {
-        ...prev,
-        medicalConditions: [...prev.medicalConditions, {conditionId, diagnosedAt: '', notes: ''}]
-      };
+      const next = exists
+        ? {
+            ...prev,
+            medicalConditions: prev.medicalConditions.filter((c) => c.conditionId !== conditionId)
+          }
+        : {
+            ...prev,
+            medicalConditions: [
+              ...prev.medicalConditions,
+              {conditionId, diagnosedAt: '', notes: ''}
+            ]
+          };
+      saveForm(next);
+      return next;
     });
   }
 
   function updateCondition(conditionId: number, field: keyof MedicalEntry, value: string) {
-    setForm((prev) => ({
-      ...prev,
-      medicalConditions: prev.medicalConditions.map((c) =>
-        c.conditionId === conditionId ? {...c, [field]: value} : c
-      )
-    }));
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        medicalConditions: prev.medicalConditions.map((c) =>
+          c.conditionId === conditionId ? {...c, [field]: value} : c
+        )
+      };
+      saveForm(next);
+      return next;
+    });
   }
 
   function handleNoneToggle() {
-    setForm((prev) => ({...prev, medicalConditions: []}));
+    setForm((prev) => {
+      const next = {...prev, medicalConditions: []};
+      saveForm(next);
+      return next;
+    });
   }
 
   function handleSubmit() {
     saveForm(form);
     setCompleted(true);
   }
-
-  if (!hydrated) return null;
 
   if (completed) {
     return (

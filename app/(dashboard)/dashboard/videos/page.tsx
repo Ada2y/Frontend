@@ -37,6 +37,8 @@ export default function VideosPage() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const selectedFileRef = useRef<File | null>(null);
+  selectedFileRef.current = selectedFile;
 
   useEffect(() => {
     return () => {
@@ -80,36 +82,36 @@ export default function VideosPage() {
 
     progressRef.current = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
+        const next = Math.min(prev + Math.random() * 15 + 5, 100);
+        if (next >= 100) {
           if (progressRef.current) clearInterval(progressRef.current);
-          return 100;
+          const file = selectedFileRef.current;
+          if (file) {
+            queueMicrotask(() => {
+              setUploading(false);
+              setUploadComplete(true);
+              setVideos((prev) => [
+                {
+                  id: `vid_mock_${Date.now()}`,
+                  fileName: file.name,
+                  sport: 'OTHER',
+                  status: 'UPLOADED' as const,
+                  durationSeconds: null,
+                  storageUrl: `mock://videos/${file.name}`,
+                  capturedAt: new Date().toISOString(),
+                  uploadedAt: new Date().toISOString()
+                },
+                ...prev
+              ]);
+              setSelectedFile(null);
+              setTimeout(() => setUploadComplete(false), 3000);
+            });
+          }
         }
-        return prev + Math.random() * 15 + 5;
+        return next;
       });
     }, 200);
   }
-
-  useEffect(() => {
-    if (progress >= 100 && uploading) {
-      setUploading(false);
-      setUploadComplete(true);
-
-      const newVideo: MockVideo = {
-        id: `vid_mock_${Date.now()}`,
-        fileName: selectedFile!.name,
-        sport: 'OTHER',
-        status: 'UPLOADED',
-        durationSeconds: null,
-        storageUrl: `mock://videos/${selectedFile!.name}`,
-        capturedAt: new Date().toISOString(),
-        uploadedAt: new Date().toISOString()
-      };
-      setVideos((prev) => [newVideo, ...prev]);
-      setSelectedFile(null);
-
-      setTimeout(() => setUploadComplete(false), 3000);
-    }
-  }, [progress, uploading, selectedFile]);
 
   function handleRemoveFile() {
     setSelectedFile(null);

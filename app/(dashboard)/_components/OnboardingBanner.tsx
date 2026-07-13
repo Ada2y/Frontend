@@ -1,27 +1,28 @@
 'use client';
 
-import {useEffect, useState} from 'react';
+import {useSyncExternalStore} from 'react';
 import Link from 'next/link';
 import {ClipboardList} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 
-export default function OnboardingBanner() {
-  const [show, setShow] = useState(false);
+function subscribe(callback: () => void) {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+}
 
-  useEffect(() => {
-    try {
-      const data = localStorage.getItem('athlete-onboarding');
-      if (!data) {
-        setShow(true);
-        return;
-      }
-      const parsed = JSON.parse(data);
-      const hasData = parsed.dob || parsed.gender || parsed.height || parsed.sport;
-      if (!hasData) setShow(true);
-    } catch {
-      setShow(true);
-    }
-  }, []);
+function getSnapshot(): boolean {
+  try {
+    const data = localStorage.getItem('athlete-onboarding');
+    if (!data) return true;
+    const parsed = JSON.parse(data);
+    return !(parsed.dob || parsed.gender || parsed.height || parsed.sport);
+  } catch {
+    return true;
+  }
+}
+
+export default function OnboardingBanner() {
+  const show = useSyncExternalStore(subscribe, getSnapshot, () => false);
 
   if (!show) return null;
 
