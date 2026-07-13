@@ -1,12 +1,30 @@
 'use client';
 
-import {useState, type FormEvent} from 'react';
+import {useState, useEffect, type FormEvent} from 'react';
 import Link from 'next/link';
 import {ApiClient} from '@/lib/api';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: {credential: string}) => void;
+          }) => void;
+          renderButton: (parent: HTMLElement, config: {theme: string; size: string; text: string}) => void;
+        };
+      };
+    };
+  }
+}
 
 export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,13 +37,72 @@ export default function SignupPage() {
         email: form.get('email') as string,
         password: form.get('password') as string
       });
-      window.location.href = '/login';
+      setRegisteredEmail(form.get('email') as string);
+      setRegistered(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
   }
+
+  async function handleResendVerification() {
+    try {
+      await ApiClient.resendVerification(registeredEmail);
+    } catch {
+      // silently ignore
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+    function tryInit() {
+      if (cancelled || !clientId) return;
+      if (!window.google) return;
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response: {credential: string}) => {
+          ApiClient.googleLogin(response.credential)
+            .then((tokens) => {
+              localStorage.setItem('access_token', tokens.access_token);
+              localStorage.setItem('refresh_token', tokens.refresh_token);
+              window.location.href = '/';
+            })
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : 'Google sign-up failed');
+            });
+        }
+      });
+
+      const container = document.getElementById('google-signup-button');
+      if (container) {
+        container.innerHTML = '';
+        window.google.accounts.id.renderButton(container, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signup_with'
+        });
+      }
+    }
+
+    tryInit();
+
+    const interval = setInterval(() => {
+      if (document.getElementById('google-signup-button')?.innerHTML) {
+        clearInterval(interval);
+        return;
+      }
+      tryInit();
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="selection:bg-foreground/10 selection:text-foreground bg-background">
@@ -62,91 +139,122 @@ export default function SignupPage() {
             </Link>
             <h1 className="mb-10 mt-6 text-xl font-semibold">Sign up for Ada2y</h1>
             <div className="space-y-2">
-              <form className="space-y-5" onSubmit={handleSubmit}>
-                {error && (
-                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {error}
+              {registered ? (
+                <div className="space-y-4">
+                  <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
+                    Check your email ({registeredEmail}) for a verification link.
                   </div>
-                )}
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium leading-none block text-left"
-                    htmlFor="name"
+                  <button
+                    className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                    onClick={handleResendVerification}
                   >
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                    id="name"
-                    name="name"
-                    required
-                    placeholder="Enter your name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium leading-none block text-left"
-                    htmlFor="last-name"
+                    Resend verification email
+                  </button>
+                  <Link
+                    className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 hover:bg-foreground/[0.04] hover:text-foreground h-9 px-4 py-2 w-full"
+                    href="/login"
                   >
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                    id="last-name"
-                    name="last-name"
-                    required
-                    placeholder="Enter your last name"
-                  />
+                    Back to login
+                  </Link>
                 </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium leading-none block text-left"
-                    htmlFor="email"
-                  >
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                    id="email"
-                    name="email"
-                    required
-                    placeholder="Enter your email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium leading-none block text-left"
-                    htmlFor="password"
-                  >
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                    id="password"
-                    name="password"
-                    required
-                    placeholder="Create a password"
-                    minLength={8}
-                  />
-                </div>
-                <button
-                  className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
-                  type="submit"
-                  disabled={loading}
-                >
-                  {loading ? 'Creating account...' : 'Create account'}
-                </button>
-              </form>
-              <div className="text-muted-foreground mt-4 text-sm">
-                Already have an account?{' '}
-                <a className="text-primary font-medium hover:underline" href="/login">
-                  Sign in
-                </a>
-              </div>
+              ) : (
+                <>
+                  <form className="space-y-5" onSubmit={handleSubmit}>
+                    {error && (
+                      <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {error}
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium leading-none block text-left"
+                        htmlFor="name"
+                      >
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="name"
+                        name="name"
+                        required
+                        placeholder="Enter your name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium leading-none block text-left"
+                        htmlFor="last-name"
+                      >
+                        Last Name
+                      </label>
+                      <input
+                        type="text"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="last-name"
+                        name="last-name"
+                        required
+                        placeholder="Enter your last name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium leading-none block text-left"
+                        htmlFor="email"
+                      >
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="email"
+                        name="email"
+                        required
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium leading-none block text-left"
+                        htmlFor="password"
+                      >
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="password"
+                        name="password"
+                        required
+                        placeholder="Create a password"
+                        minLength={8}
+                      />
+                    </div>
+                    <button
+                      className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                      type="submit"
+                      disabled={loading}
+                    >
+                      {loading ? 'Creating account...' : 'Create account'}
+                    </button>
+                  </form>
+                  <div className="relative my-4">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-foreground/10" />
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-background text-muted-foreground px-2">or</span>
+                    </div>
+                  </div>
+                  <div id="google-signup-button" className="w-full flex justify-center" />
+                  <div className="text-muted-foreground mt-4 text-sm">
+                    Already have an account?{' '}
+                    <a className="text-primary font-medium hover:underline" href="/login">
+                      Sign in
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

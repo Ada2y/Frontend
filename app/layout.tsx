@@ -1,6 +1,8 @@
 import type {Metadata} from 'next';
+import Script from 'next/script';
 import {Inter, Geist_Mono} from 'next/font/google';
 import './globals.css';
+import {AuthProvider} from '@/lib/auth-context';
 
 const inter = Inter({
   variable: '--font-inter-variable',
@@ -27,8 +29,12 @@ export default function RootLayout({
       lang="en"
       dir="ltr"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
     >
-      <body className="min-h-full bg-background">{children}</body>
+      <body className="min-h-full bg-background">
+        <AuthProvider>{children}</AuthProvider>
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+      </body>
     </html>
   );
 }

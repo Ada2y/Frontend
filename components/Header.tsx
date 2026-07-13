@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import {useEffect, useState} from 'react';
-import {Menu, X} from 'lucide-react';
+import {Menu, X, LogOut} from 'lucide-react';
 import {cn} from '@/lib/utils';
+import {useAuth} from '@/lib/auth-context';
 
 const navItems = [
   {
@@ -35,6 +36,7 @@ function Logo() {
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const {user, loading, logout} = useAuth();
 
   useEffect(() => {
     const onScroll = () => {
@@ -131,18 +133,35 @@ export default function Header() {
             )}
           >
             <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all h-8 rounded-md px-3 text-xs text-[#62666d] hover:bg-[#08090a]/5 hover:text-[#08090a]"
-              >
-                <span>Sign In</span>
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all shadow-sm shadow-[#08090a]/10 border border-transparent bg-[#ffffff] ring-1 ring-[#08090a]/10 duration-200 hover:bg-[#f7f8f8]/50 h-8 rounded-md px-3 text-xs text-[#08090a]"
-              >
-                <span>Contact Sales</span>
-              </Link>
+              {!loading && user ? (
+                <>
+                  <span className="inline-flex items-center justify-center h-8 rounded-md px-3 text-xs font-medium text-[#08090a]">
+                    {user.full_name}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-all h-8 rounded-md px-3 text-xs text-[#62666d] hover:bg-[#08090a]/5 hover:text-[#08090a] cursor-pointer"
+                  >
+                    <LogOut className="size-3.5" />
+                    <span>Log out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all h-8 rounded-md px-3 text-xs text-[#62666d] hover:bg-[#08090a]/5 hover:text-[#08090a]"
+                  >
+                    <span>Sign In</span>
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all shadow-sm shadow-[#08090a]/10 border border-transparent bg-[#ffffff] ring-1 ring-[#08090a]/10 duration-200 hover:bg-[#f7f8f8]/50 h-8 rounded-md px-3 text-xs text-[#08090a]"
+                  >
+                    <span>Contact Sales</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
