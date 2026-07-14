@@ -1,5 +1,5 @@
 import type {LucideIcon} from 'lucide-react';
-import {LayoutDashboard, Dumbbell, Apple, Users, ShieldAlert, Video} from 'lucide-react';
+import {LayoutDashboard, Dumbbell, Apple, Users, ShieldAlert, Video, Activity} from 'lucide-react';
 
 export interface DashboardNavItem {
   label: string;
@@ -13,5 +13,6 @@ export const dashboardNavItems: DashboardNavItem[] = [
   {label: 'Nutrition', href: '/dashboard/nutrition', icon: Apple},
   {label: 'Team', href: '/dashboard/team', icon: Users},
   {label: 'Review Queue', href: '/dashboard/admin/review-queue', icon: ShieldAlert},
-  {label: 'Videos', href: '/dashboard/videos', icon: Video}
+  {label: 'Videos', href: '/dashboard/videos', icon: Video},
+  {label: 'Biomechanics', href: '/dashboard/biomechanics', icon: Activity}
 ];
