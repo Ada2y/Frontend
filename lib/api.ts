@@ -69,13 +69,37 @@ export interface NutritionRecommendation {
   macros: {protein: number; carbs: number; fats: number; calories: number};
 }
 
+export type AgentType =
+  'supervisor' | 'biomechanics' | 'programming' | 'nutrition_medical' | 'biometric_profiling';
+
+export type AgentRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'needs_human_review';
+
+export type InjurySeverity = 'none' | 'low' | 'moderate' | 'high' | 'critical';
+
 export interface ReviewQueueItem {
   id: string;
-  athlete_name: string;
-  flag_reason: string;
-  flagged_by_agent: string;
-  created_at: string;
+  agent_run_id: string;
+  agent_type: AgentType;
+  agent_run_status: AgentRunStatus;
+  athlete_user_id: string;
+  reason: string;
+  severity: InjurySeverity;
+  assigned_to_user_id: string | null;
   resolved: boolean;
+  resolution_notes: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  nutrition_recommendation_id: string | null;
+}
+
+export interface ReviewQueuePatchResult {
+  id: string;
+  resolved: boolean;
+  resolution_notes: string | null;
+  resolved_at: string | null;
+  assigned_to_user_id: string | null;
+  nutrition_recommendation_id: string | null;
+  nutrition_recommendation_status: string | null;
 }
 
 export interface RegisterPayload {
@@ -214,12 +238,12 @@ export class ApiClient {
     return request<NutritionRecommendation>(`/nutrition/${id}`);
   }
 
-  static getReviewQueue() {
-    return request<ReviewQueueItem[]>('/admin/review-queue');
+  static getReviewQueue(resolved: boolean) {
+    return request<ReviewQueueItem[]>(`/admin/review-queue?resolved=${resolved}`);
   }
 
-  static updateReviewQueueItem(id: string, data: {resolved: boolean; note?: string}) {
-    return request<ReviewQueueItem>(`/admin/review-queue/${id}`, {
+  static resolveReviewQueueItem(id: string, data: {approve: boolean; resolution_notes?: string}) {
+    return request<ReviewQueuePatchResult>(`/admin/review-queue/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data)
     });
