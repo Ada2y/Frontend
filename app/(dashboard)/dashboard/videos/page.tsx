@@ -1,6 +1,7 @@
 'use client';
 
 import {useCallback, useEffect, useRef, useState} from 'react';
+import Link from 'next/link';
 import {CheckCircle, Upload, Video, X} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
@@ -233,6 +234,14 @@ export default function VideosPage() {
                   <span>{formatDate(v.uploadedAt)}</span>
                 </div>
                 {v.failureReason && <p className="mt-2 text-xs text-red-600">{v.failureReason}</p>}
+                {v.status === 'COMPLETED' && (
+                  <Link
+                    href={`/dashboard/biomechanics/${v.id}`}
+                    className="mt-2 inline-block text-xs font-medium text-primary underline"
+                  >
+                    View report
+                  </Link>
+                )}
               </CardContent>
             </Card>
           ))}
