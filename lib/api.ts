@@ -21,11 +21,20 @@ function extractErrorMessage(err: ApiErrorResponse): string {
 
 export type NutritionStatus = 'auto_approved' | 'pending_review';
 
+export type InjuryRiskLevel = 'low' | 'medium' | 'high';
+
+export interface TeamPlayer {
+  id: string;
+  full_name: string;
+  injury_risk: InjuryRiskLevel;
+  last_session_at: string | null;
+}
+
 export interface Team {
   id: string;
   name: string;
   sport: string;
-  player_count: number;
+  players: TeamPlayer[];
 }
 
 export type SessionStatus = 'pending' | 'completed' | 'skipped';
