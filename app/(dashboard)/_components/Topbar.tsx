@@ -3,13 +3,18 @@
 import {useState} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
-import {Menu, X} from 'lucide-react';
+import {LogOut, Menu, X} from 'lucide-react';
 import {cn} from '@/lib/utils';
-import {dashboardNavItems} from '@/lib/dashboard-nav';
+import {navItemsForRole} from '@/lib/dashboard-nav';
+import {useAuth} from '@/lib/auth-context';
+import {Button} from '@/components/ui/button';
+import NotificationBell from './NotificationBell';
 
 export default function Topbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const {user, logout} = useAuth();
+  const navItems = navItemsForRole(user?.role);
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
@@ -20,22 +25,42 @@ export default function Topbar() {
         Ada2y
       </Link>
       <div className="hidden text-sm font-medium text-foreground lg:block">
-        {dashboardNavItems.find((item) => item.href === pathname)?.label ?? 'Dashboard'}
+        {navItems.find((item) => item.href === pathname)?.label ?? 'Dashboard'}
       </div>
-      <button
-        aria-label={open ? 'Close menu' : 'Open menu'}
-        onClick={() => setOpen((v) => !v)}
-        className="-me-2 rounded-md p-2 text-foreground lg:hidden"
-      >
-        {open ? <X className="size-5" /> : <Menu className="size-5" />}
-      </button>
+      <div className="flex items-center gap-1">
+        {user && (
+          <div className="hidden items-center gap-2 pr-2 lg:flex">
+            <span className="text-sm text-foreground">{user.full_name}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+              {user.role.replace(/_/g, ' ')}
+            </span>
+          </div>
+        )}
+        <NotificationBell />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Sign out"
+          title="Sign out"
+          onClick={() => logout()}
+        >
+          <LogOut className="size-4" />
+        </Button>
+        <button
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          onClick={() => setOpen((v) => !v)}
+          className="-me-2 rounded-md p-2 text-foreground lg:hidden"
+        >
+          {open ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
+      </div>
 
       {open && (
         <nav
           aria-label="Dashboard"
           className="absolute inset-x-0 top-14 z-40 flex flex-col gap-1 border-b border-border bg-card p-3 shadow-lg lg:hidden"
         >
-          {dashboardNavItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

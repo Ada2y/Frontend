@@ -72,7 +72,7 @@ export default function SignupPage() {
             .then((tokens) => {
               localStorage.setItem('access_token', tokens.access_token);
               localStorage.setItem('refresh_token', tokens.refresh_token);
-              window.location.href = '/';
+              window.location.href = '/dashboard';
             })
             .catch((err) => {
               setError(err instanceof Error ? err.message : 'Google sign-up failed');

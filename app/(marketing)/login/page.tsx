@@ -39,7 +39,7 @@ export default function LoginPage() {
       );
       localStorage.setItem('access_token', tokens.access_token);
       localStorage.setItem('refresh_token', tokens.refresh_token);
-      window.location.href = '/';
+      window.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -62,7 +62,7 @@ export default function LoginPage() {
             .then((tokens) => {
               localStorage.setItem('access_token', tokens.access_token);
               localStorage.setItem('refresh_token', tokens.refresh_token);
-              window.location.href = '/';
+              window.location.href = '/dashboard';
             })
             .catch((err) => {
               setError(err instanceof Error ? err.message : 'Google login failed');

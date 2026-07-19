@@ -1,28 +1,31 @@
 'use client';
 
-import {useSyncExternalStore} from 'react';
+import {useEffect, useState} from 'react';
 import Link from 'next/link';
 import {ClipboardList} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-
-function subscribe(callback: () => void) {
-  window.addEventListener('storage', callback);
-  return () => window.removeEventListener('storage', callback);
-}
-
-function getSnapshot(): boolean {
-  try {
-    const data = localStorage.getItem('athlete-onboarding');
-    if (!data) return true;
-    const parsed = JSON.parse(data);
-    return !(parsed.dob || parsed.gender || parsed.height || parsed.sport);
-  } catch {
-    return true;
-  }
-}
+import {useAuth} from '@/lib/auth-context';
+import {ApiClient} from '@/lib/api';
 
 export default function OnboardingBanner() {
-  const show = useSyncExternalStore(subscribe, getSnapshot, () => false);
+  const {user} = useAuth();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (user?.role !== 'athlete') return;
+    let cancelled = false;
+    ApiClient.getMyProfile()
+      .then(() => {
+        if (!cancelled) setShow(false);
+      })
+      .catch(() => {
+        // no profile yet (404) - or any other fetch failure - show the prompt
+        if (!cancelled) setShow(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (!show) return null;
 

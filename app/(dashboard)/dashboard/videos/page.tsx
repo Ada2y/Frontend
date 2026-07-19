@@ -2,10 +2,46 @@
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
-import {CheckCircle, Upload, Video, X} from 'lucide-react';
+import {AlertCircle, CheckCircle, Upload, Video, X} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
-import {MOCK_VIDEOS, STATUS_COLORS, type MockVideo, type VideoStatus} from '@/lib/mocks/videos';
+import {
+  ApiClient,
+  FOOTBALL_EXERCISES,
+  GYM_EXERCISES,
+  type VideoExercise,
+  type VideoListItem,
+  type VideoSport,
+  type VideoStatus
+} from '@/lib/api';
+
+// Site-standard form-control style (matches CreateTeamSheet's inputClassName).
+const selectClassName =
+  'flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full';
+
+const SPORT_OPTIONS: {value: VideoSport; label: string}[] = [
+  {value: 'gym', label: 'Gym'},
+  {value: 'football', label: 'Football'}
+];
+
+const EXERCISE_OPTIONS_BY_SPORT: Record<
+  VideoSport,
+  {value: VideoExercise; label: string; view: string}[]
+> = {
+  gym: GYM_EXERCISES,
+  football: FOOTBALL_EXERCISES
+};
+
+const STATUS_COLORS: Record<VideoStatus, {bg: string; text: string}> = {
+  uploaded: {bg: 'bg-blue-500/10', text: 'text-blue-600'},
+  queued: {bg: 'bg-muted', text: 'text-muted-foreground'},
+  processing: {bg: 'bg-amber-500/10', text: 'text-amber-600'},
+  completed: {bg: 'bg-green-500/10', text: 'text-green-600'},
+  failed: {bg: 'bg-red-500/10', text: 'text-red-600'}
+};
+
+const PENDING_STATUSES: VideoStatus[] = ['uploaded', 'queued', 'processing'];
+const POLL_INTERVAL_MS = 4000;
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null) return '--';
@@ -18,11 +54,18 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
 }
 
+const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
+
+function formatExercise(exercise: VideoExercise | null): string | null {
+  if (!exercise) return null;
+  return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
+}
+
 function StatusBadge({status}: {status: VideoStatus}) {
   const colors = STATUS_COLORS[status];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${colors.bg} ${colors.text}`}
     >
       {status}
     </span>
@@ -30,30 +73,71 @@ function StatusBadge({status}: {status: VideoStatus}) {
 }
 
 export default function VideosPage() {
-  const [videos, setVideos] = useState<MockVideo[]>(MOCK_VIDEOS);
+  const [videos, setVideos] = useState<VideoListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sport, setSport] = useState<VideoSport>('gym');
+  const [exercise, setExercise] = useState<VideoExercise | ''>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadComplete, setUploadComplete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const selectedFileRef = useRef<File | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadVideos = useCallback(async () => {
+    try {
+      const list = await ApiClient.listVideos();
+      setVideos(list);
+    } catch {
+      // leave the previous list in place - the topbar/other polling will surface auth issues
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    selectedFileRef.current = selectedFile;
-  }, [selectedFile]);
-
-  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await ApiClient.listVideos();
+        if (!cancelled) setVideos(list);
+      } catch {
+        // leave the previous list in place - the topbar/other polling will surface auth issues
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     return () => {
-      if (progressRef.current) clearInterval(progressRef.current);
+      cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const hasPending = videos.some((v) => PENDING_STATUSES.includes(v.status));
+    if (!hasPending) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+    if (pollRef.current) return;
+    pollRef.current = setInterval(loadVideos, POLL_INTERVAL_MS);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [videos, loadVideos]);
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('video/')) return;
     setSelectedFile(file);
     setUploadComplete(false);
+    setUploadError(null);
     setProgress(0);
   }, []);
 
@@ -79,49 +163,35 @@ export default function VideosPage() {
     if (file) handleFile(file);
   }
 
-  function handleUpload() {
+  async function handleUpload() {
     if (!selectedFile) return;
+    if (!exercise) {
+      setUploadError('Select which exercise this video shows.');
+      return;
+    }
+
     setUploading(true);
+    setUploadError(null);
     setProgress(0);
 
-    progressRef.current = setInterval(() => {
-      setProgress((prev) => {
-        const next = Math.min(prev + Math.random() * 15 + 5, 100);
-        if (next >= 100) {
-          if (progressRef.current) clearInterval(progressRef.current);
-          const file = selectedFileRef.current;
-          if (file) {
-            queueMicrotask(() => {
-              setUploading(false);
-              setUploadComplete(true);
-              setVideos((prev) => [
-                {
-                  id: `vid_mock_${Date.now()}`,
-                  fileName: file.name,
-                  sport: 'OTHER',
-                  status: 'UPLOADED' as const,
-                  durationSeconds: null,
-                  storageUrl: `mock://videos/${file.name}`,
-                  capturedAt: new Date().toISOString(),
-                  uploadedAt: new Date().toISOString()
-                },
-                ...prev
-              ]);
-              setSelectedFile(null);
-              setTimeout(() => setUploadComplete(false), 3000);
-            });
-          }
-        }
-        return next;
-      });
-    }, 200);
+    try {
+      await ApiClient.uploadVideoWithProgress(sport, selectedFile, exercise, setProgress);
+      setUploading(false);
+      setUploadComplete(true);
+      setSelectedFile(null);
+      await loadVideos();
+      setTimeout(() => setUploadComplete(false), 3000);
+    } catch (err) {
+      setUploading(false);
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    }
   }
 
   function handleRemoveFile() {
     setSelectedFile(null);
     setProgress(0);
     setUploadComplete(false);
-    if (progressRef.current) clearInterval(progressRef.current);
+    setUploadError(null);
     setUploading(false);
   }
 
@@ -130,12 +200,55 @@ export default function VideosPage() {
       <div>
         <h1 className="text-xl font-semibold text-foreground">Videos</h1>
         <p className="text-sm text-muted-foreground">
-          Upload training and match videos for pose analysis and biomechanics review.
+          Upload training videos for pose analysis and biomechanics review.
         </p>
       </div>
 
       <Card>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Sport</span>
+              <select
+                value={sport}
+                onChange={(e) => {
+                  setSport(e.target.value as VideoSport);
+                  setExercise('');
+                }}
+                className={selectClassName}
+              >
+                {SPORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Exercise</span>
+              <select
+                value={exercise}
+                onChange={(e) => setExercise(e.target.value as VideoExercise)}
+                className={selectClassName}
+              >
+                <option value="">Select an exercise…</option>
+                {EXERCISE_OPTIONS_BY_SPORT[sport].map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {exercise && (
+            <p className="-mt-1 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Camera angle: </span>
+              {EXERCISE_OPTIONS_BY_SPORT[sport].find((opt) => opt.value === exercise)?.view}
+            </p>
+          )}
+
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -155,7 +268,9 @@ export default function VideosPage() {
                 Drag and drop a video here, or{' '}
                 <span className="text-primary underline">browse files</span>
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">MP4, MOV, AVI — max 500MB</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                MP4, MOV, AVI — max 100MB, 90 seconds
+              </p>
             </div>
             <input
               ref={inputRef}
@@ -163,11 +278,12 @@ export default function VideosPage() {
               accept="video/*"
               onChange={handleInputChange}
               className="hidden"
+              aria-label="Upload video file"
             />
           </div>
 
           {selectedFile && (
-            <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <Video className="size-4 shrink-0 text-muted-foreground" />
@@ -185,7 +301,7 @@ export default function VideosPage() {
                 </Button>
               </div>
 
-              {(uploading || progress > 0) && (
+              {uploading && (
                 <div className="flex flex-col gap-1.5">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -193,16 +309,21 @@ export default function VideosPage() {
                       style={{width: `${Math.min(progress, 100)}%`}}
                     />
                   </div>
-                  <p className="text-right text-xs text-muted-foreground">
-                    {Math.min(Math.round(progress), 100)}%
-                  </p>
+                  <p className="text-right text-xs text-muted-foreground">{progress}%</p>
+                </div>
+              )}
+
+              {uploadError && (
+                <div className="flex items-center gap-2 text-sm text-red-600">
+                  <AlertCircle className="size-4 shrink-0" />
+                  {uploadError}
                 </div>
               )}
 
               {uploadComplete && (
                 <div className="flex items-center gap-2 text-sm text-green-600">
                   <CheckCircle className="size-4" />
-                  Upload complete
+                  Upload complete — queued for analysis
                 </div>
               )}
 
@@ -218,23 +339,35 @@ export default function VideosPage() {
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-foreground">Uploaded videos</h2>
+        {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {!loading && videos.length === 0 && (
+          <p className="text-sm text-muted-foreground">No videos uploaded yet.</p>
+        )}
         <div className="grid grid-cols-1 gap-3">
           {videos.map((v) => (
             <Card key={v.id} size="sm">
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-sm truncate">{v.fileName}</CardTitle>
+                  <CardTitle className="text-sm truncate">
+                    {v.original_filename ?? 'Untitled video'}
+                  </CardTitle>
                   <StatusBadge status={v.status} />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>{v.sport}</span>
-                  <span>{formatDuration(v.durationSeconds)}</span>
-                  <span>{formatDate(v.uploadedAt)}</span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="capitalize">{v.sport}</span>
+                  {formatExercise(v.exercise) && <span>{formatExercise(v.exercise)}</span>}
+                  <span>{formatDuration(v.duration_seconds)}</span>
+                  <span>{formatDate(v.created_at)}</span>
                 </div>
-                {v.failureReason && <p className="mt-2 text-xs text-red-600">{v.failureReason}</p>}
-                {v.status === 'COMPLETED' && (
+                {v.headline && v.status === 'completed' && (
+                  <p className="mt-2 text-xs text-foreground">{v.headline}</p>
+                )}
+                {v.failure_reason && (
+                  <p className="mt-2 text-xs text-red-600">{v.failure_reason}</p>
+                )}
+                {v.status === 'completed' && (
                   <Link
                     href={`/dashboard/biomechanics/${v.id}`}
                     className="mt-2 inline-block text-xs font-medium text-primary underline"

@@ -1,36 +1,68 @@
 'use client';
 
-import {useState} from 'react';
-import {ShieldAlert} from 'lucide-react';
+import {useEffect, useState} from 'react';
+import {Loader2, ShieldAlert} from 'lucide-react';
 import {Card} from '@/components/ui/card';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
 import ReviewQueueRow from '@/app/(dashboard)/_components/ReviewQueueRow';
-import {mockReviewQueueOpen, mockReviewQueueResolved} from '@/lib/mocks/review-queue';
-import type {ReviewQueueItem} from '@/lib/api';
+import {ApiClient, type ReviewQueueItem} from '@/lib/api';
 import {cn} from '@/lib/utils';
 
 type Filter = 'open' | 'resolved';
 
 export default function ReviewQueuePage() {
   const [filter, setFilter] = useState<Filter>('open');
-  const [openItems, setOpenItems] = useState<ReviewQueueItem[]>(mockReviewQueueOpen);
-  const [resolvedItems, setResolvedItems] = useState<ReviewQueueItem[]>(mockReviewQueueResolved);
+  const [openItems, setOpenItems] = useState<ReviewQueueItem[]>([]);
+  const [resolvedItems, setResolvedItems] = useState<ReviewQueueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleResolve(id: string, data: {approve: boolean; resolution_notes?: string}) {
-    setOpenItems((prev) => {
-      const item = prev.find((i) => i.id === id);
-      if (!item) return prev;
-      const resolvedItem: ReviewQueueItem = {
-        ...item,
-        resolved: true,
-        resolution_notes: data.resolution_notes ?? null,
-        resolved_at: new Date().toISOString()
-      };
-      setResolvedItems((r) => [resolvedItem, ...r]);
-      return prev.filter((i) => i.id !== id);
-    });
-    // Real wiring lands once PATCH /admin/review-queue/{id} is live:
-    // ApiClient.resolveReviewQueueItem(id, data)
+  async function load() {
+    try {
+      const [open, resolved] = await Promise.all([
+        ApiClient.getReviewQueue(false),
+        ApiClient.getReviewQueue(true)
+      ]);
+      setOpenItems(open);
+      setResolvedItems(resolved);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load the review queue.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [open, resolved] = await Promise.all([
+          ApiClient.getReviewQueue(false),
+          ApiClient.getReviewQueue(true)
+        ]);
+        if (cancelled) return;
+        setOpenItems(open);
+        setResolvedItems(resolved);
+      } catch (err) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : 'Failed to load the review queue.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleResolve(id: string, data: {approve: boolean; resolution_notes?: string}) {
+    try {
+      await ApiClient.resolveReviewQueueItem(id, data);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resolve this item.');
+    }
   }
 
   const items = filter === 'open' ? openItems : resolvedItems;
@@ -69,7 +101,13 @@ export default function ReviewQueuePage() {
         </button>
       </div>
 
-      {items.length === 0 ? (
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : items.length === 0 ? (
         <EmptyState
           icon={ShieldAlert}
           title={filter === 'open' ? 'Queue is clear' : 'No resolved items yet'}
