@@ -1,29 +1,40 @@
 'use client';
 
-import {useState, useSyncExternalStore} from 'react';
+import {useEffect, useState} from 'react';
 import Link from 'next/link';
-import {CheckCircle} from 'lucide-react';
+import {AlertCircle, CheckCircle, Loader2} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent, CardFooter} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
-import {MOCK_SPORTS, MOCK_FITNESS_LEVELS, MOCK_MEDICAL_CONDITIONS} from '@/lib/mocks/athlete';
+import {
+  ApiClient,
+  type AthleteGender,
+  type MedicalConditionCatalogItem,
+  type VideoSport
+} from '@/lib/api';
+
+const FITNESS_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Elite'] as const;
+
+// Scope for now: gym + football only (matches the video-upload pipeline).
+const SPORTS: {value: VideoSport; label: string}[] = [
+  {value: 'gym', label: 'Gym'},
+  {value: 'football', label: 'Football'}
+];
 
 interface MedicalEntry {
-  conditionId: number;
+  code: string;
   diagnosedAt: string;
   notes: string;
 }
 
 interface OnboardingForm {
   dob: string;
-  gender: string;
+  gender: AthleteGender | '';
   height: string;
   weight: string;
   fitnessLevel: string;
-  sport: string;
+  sport: VideoSport | '';
   medicalConditions: MedicalEntry[];
 }
-
-const STORAGE_KEY = 'athlete-onboarding';
 
 const INITIAL_FORM: OnboardingForm = {
   dob: '',
@@ -37,86 +48,148 @@ const INITIAL_FORM: OnboardingForm = {
 
 const TOTAL_STEPS = 4;
 
-function subscribe(callback: () => void) {
-  window.addEventListener('storage', callback);
-  return () => window.removeEventListener('storage', callback);
-}
-
-function saveForm(form: OnboardingForm) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-}
+const inputClassName =
+  'h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/50';
 
 export default function OnboardingPage() {
-  const storedJson = useSyncExternalStore(
-    subscribe,
-    () => localStorage.getItem(STORAGE_KEY),
-    () => null
-  );
-
+  const [loading, setLoading] = useState(true);
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
+  const [existingConditionCodes, setExistingConditionCodes] = useState<Set<string>>(new Set());
+  const [catalog, setCatalog] = useState<MedicalConditionCatalogItem[]>([]);
   const [step, setStep] = useState(1);
   const [completed, setCompleted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<OnboardingForm>(INITIAL_FORM);
 
-  const [form, setForm] = useState<OnboardingForm>(() => {
-    if (storedJson) {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
       try {
-        return {...INITIAL_FORM, ...JSON.parse(storedJson)};
-      } catch {}
-    }
-    return INITIAL_FORM;
-  });
+        const [conditionsCatalog, profileResult, myConditionsResult] = await Promise.allSettled([
+          ApiClient.listMedicalConditionsCatalog(),
+          ApiClient.getMyProfile(),
+          ApiClient.listMyMedicalConditions()
+        ]);
+        if (cancelled) return;
+
+        if (conditionsCatalog.status === 'fulfilled') setCatalog(conditionsCatalog.value);
+
+        if (profileResult.status === 'fulfilled') {
+          const p = profileResult.value;
+          setHasExistingProfile(true);
+          setForm((prev) => ({
+            ...prev,
+            dob: p.date_of_birth ?? '',
+            gender: p.gender,
+            height: p.height_cm != null ? String(p.height_cm) : '',
+            weight: p.weight_kg != null ? String(p.weight_kg) : '',
+            fitnessLevel: p.fitness_level ?? '',
+            sport: (p.dominant_sport as VideoSport) ?? ''
+          }));
+        }
+
+        if (myConditionsResult.status === 'fulfilled') {
+          const codes = new Set(myConditionsResult.value.map((c) => c.condition.code));
+          setExistingConditionCodes(codes);
+          setForm((prev) => ({
+            ...prev,
+            medicalConditions: myConditionsResult.value.map((c) => ({
+              code: c.condition.code,
+              diagnosedAt: c.diagnosed_at ?? '',
+              notes: c.notes ?? ''
+            }))
+          }));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function update<K extends keyof OnboardingForm>(key: K, value: OnboardingForm[K]) {
-    setForm((prev) => {
-      const next = {...prev, [key]: value};
-      saveForm(next);
-      return next;
-    });
+    setForm((prev) => ({...prev, [key]: value}));
   }
 
-  function toggleCondition(conditionId: number) {
+  function toggleCondition(code: string) {
     setForm((prev) => {
-      const exists = prev.medicalConditions.find((c) => c.conditionId === conditionId);
-      const next = exists
-        ? {
-            ...prev,
-            medicalConditions: prev.medicalConditions.filter((c) => c.conditionId !== conditionId)
-          }
-        : {
-            ...prev,
-            medicalConditions: [
-              ...prev.medicalConditions,
-              {conditionId, diagnosedAt: '', notes: ''}
-            ]
-          };
-      saveForm(next);
-      return next;
-    });
-  }
-
-  function updateCondition(conditionId: number, field: keyof MedicalEntry, value: string) {
-    setForm((prev) => {
-      const next = {
+      const exists = prev.medicalConditions.find((c) => c.code === code);
+      return {
         ...prev,
-        medicalConditions: prev.medicalConditions.map((c) =>
-          c.conditionId === conditionId ? {...c, [field]: value} : c
-        )
+        medicalConditions: exists
+          ? prev.medicalConditions.filter((c) => c.code !== code)
+          : [...prev.medicalConditions, {code, diagnosedAt: '', notes: ''}]
       };
-      saveForm(next);
-      return next;
     });
+  }
+
+  function updateCondition(code: string, field: 'diagnosedAt' | 'notes', value: string) {
+    setForm((prev) => ({
+      ...prev,
+      medicalConditions: prev.medicalConditions.map((c) =>
+        c.code === code ? {...c, [field]: value} : c
+      )
+    }));
   }
 
   function handleNoneToggle() {
-    setForm((prev) => {
-      const next = {...prev, medicalConditions: []};
-      saveForm(next);
-      return next;
-    });
+    setForm((prev) => ({...prev, medicalConditions: []}));
   }
 
-  function handleSubmit() {
-    saveForm(form);
-    setCompleted(true);
+  async function handleSubmit() {
+    setSaving(true);
+    setError(null);
+    try {
+      const profileInput = {
+        date_of_birth: form.dob || null,
+        gender: form.gender || undefined,
+        height_cm: form.height ? Number(form.height) : null,
+        weight_kg: form.weight ? Number(form.weight) : null,
+        dominant_sport: form.sport || null,
+        fitness_level: form.fitnessLevel || null
+      };
+      if (hasExistingProfile) {
+        await ApiClient.updateMyProfile(profileInput);
+      } else {
+        await ApiClient.createMyProfile(profileInput);
+      }
+
+      const selectedCodes = new Set(form.medicalConditions.map((c) => c.code));
+
+      const newlySelected = form.medicalConditions.filter(
+        (c) => !existingConditionCodes.has(c.code)
+      );
+      for (const c of newlySelected) {
+        await ApiClient.addMyMedicalCondition({
+          medical_condition_code: c.code,
+          diagnosed_at: c.diagnosedAt || null,
+          notes: c.notes || null
+        });
+      }
+
+      const deselected = [...existingConditionCodes].filter((code) => !selectedCodes.has(code));
+      for (const code of deselected) {
+        const conditionId = catalog.find((c) => c.code === code)?.id;
+        if (conditionId != null) await ApiClient.removeMyMedicalCondition(conditionId);
+      }
+
+      setCompleted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save your profile.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   if (completed) {
@@ -142,7 +215,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const selectedConditionIds = form.medicalConditions.map((c) => c.conditionId);
+  const selectedCodes = form.medicalConditions.map((c) => c.code);
 
   return (
     <div className="flex flex-col gap-6">
@@ -183,20 +256,23 @@ export default function OnboardingPage() {
                   type="date"
                   value={form.dob}
                   onChange={(e) => update('dob', e.target.value)}
-                  className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/50"
+                  className={inputClassName}
                 />
               </label>
 
               <fieldset className="flex flex-col gap-2">
                 <legend className="text-sm font-medium text-foreground">Gender</legend>
-                {['Male', 'Female', 'Unspecified'].map((g) => (
-                  <label key={g} className="flex items-center gap-2 text-sm text-foreground">
+                {(['male', 'female'] as const).map((g) => (
+                  <label
+                    key={g}
+                    className="flex items-center gap-2 text-sm text-foreground capitalize"
+                  >
                     <input
                       type="radio"
                       name="gender"
-                      value={g.toLowerCase()}
-                      checked={form.gender === g.toLowerCase()}
-                      onChange={(e) => update('gender', e.target.value)}
+                      value={g}
+                      checked={form.gender === g}
+                      onChange={(e) => update('gender', e.target.value as AthleteGender)}
                       className="accent-primary"
                     />
                     {g}
@@ -215,7 +291,7 @@ export default function OnboardingPage() {
                   placeholder="e.g. 175"
                   value={form.height}
                   onChange={(e) => update('height', e.target.value)}
-                  className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring/50"
+                  className={`${inputClassName} placeholder:text-muted-foreground`}
                 />
               </label>
 
@@ -226,13 +302,13 @@ export default function OnboardingPage() {
                   placeholder="e.g. 70"
                   value={form.weight}
                   onChange={(e) => update('weight', e.target.value)}
-                  className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring/50"
+                  className={`${inputClassName} placeholder:text-muted-foreground`}
                 />
               </label>
 
               <fieldset className="flex flex-col gap-2">
                 <legend className="text-sm font-medium text-foreground">Fitness level</legend>
-                {MOCK_FITNESS_LEVELS.map((level) => (
+                {FITNESS_LEVELS.map((level) => (
                   <label key={level} className="flex items-center gap-2 text-sm text-foreground">
                     <input
                       type="radio"
@@ -252,17 +328,20 @@ export default function OnboardingPage() {
           {step === 3 && (
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium text-foreground">Dominant sport</legend>
-              {MOCK_SPORTS.map((sport) => (
-                <label key={sport} className="flex items-center gap-2 text-sm text-foreground">
+              {SPORTS.map((sport) => (
+                <label
+                  key={sport.value}
+                  className="flex items-center gap-2 text-sm text-foreground"
+                >
                   <input
                     type="radio"
                     name="sport"
-                    value={sport}
-                    checked={form.sport === sport}
-                    onChange={(e) => update('sport', e.target.value)}
+                    value={sport.value}
+                    checked={form.sport === sport.value}
+                    onChange={(e) => update('sport', e.target.value as VideoSport)}
                     className="accent-primary"
                   />
-                  {sport}
+                  {sport.label}
                 </label>
               ))}
             </fieldset>
@@ -273,29 +352,31 @@ export default function OnboardingPage() {
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
-                  checked={selectedConditionIds.length === 0}
+                  checked={selectedCodes.length === 0}
                   onChange={handleNoneToggle}
                   className="accent-primary"
                 />
                 None
               </label>
 
-              {MOCK_MEDICAL_CONDITIONS.map((condition) => {
-                const isSelected = selectedConditionIds.includes(condition.id);
+              {catalog.map((condition) => {
+                const isSelected = selectedCodes.includes(condition.code);
                 return (
-                  <div key={condition.id} className="flex flex-col gap-2">
+                  <div key={condition.code} className="flex flex-col gap-2">
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleCondition(condition.id)}
+                        onChange={() => toggleCondition(condition.code)}
                         className="accent-primary"
                       />
-                      {condition.name}
+                      {condition.name_en}
                     </label>
                     {isSelected && (
                       <div className="ml-6 flex flex-col gap-2 rounded-lg border border-border p-3">
-                        <p className="text-xs text-muted-foreground">{condition.riskNotes}</p>
+                        {condition.risk_notes && (
+                          <p className="text-xs text-muted-foreground">{condition.risk_notes}</p>
+                        )}
                         <label className="flex flex-col gap-1">
                           <span className="text-xs font-medium text-muted-foreground">
                             Diagnosed date
@@ -303,11 +384,11 @@ export default function OnboardingPage() {
                           <input
                             type="date"
                             value={
-                              form.medicalConditions.find((c) => c.conditionId === condition.id)
+                              form.medicalConditions.find((c) => c.code === condition.code)
                                 ?.diagnosedAt ?? ''
                             }
                             onChange={(e) =>
-                              updateCondition(condition.id, 'diagnosedAt', e.target.value)
+                              updateCondition(condition.code, 'diagnosedAt', e.target.value)
                             }
                             className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring/50"
                           />
@@ -317,10 +398,12 @@ export default function OnboardingPage() {
                           <textarea
                             rows={2}
                             value={
-                              form.medicalConditions.find((c) => c.conditionId === condition.id)
+                              form.medicalConditions.find((c) => c.code === condition.code)
                                 ?.notes ?? ''
                             }
-                            onChange={(e) => updateCondition(condition.id, 'notes', e.target.value)}
+                            onChange={(e) =>
+                              updateCondition(condition.code, 'notes', e.target.value)
+                            }
                             className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring/50 resize-none"
                           />
                         </label>
@@ -331,11 +414,18 @@ export default function OnboardingPage() {
               })}
             </>
           )}
+
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-600">
+              <AlertCircle className="size-4 shrink-0" />
+              {error}
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="flex justify-between">
           {step > 1 ? (
-            <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
+            <Button variant="ghost" onClick={() => setStep((s) => s - 1)} disabled={saving}>
               Back
             </Button>
           ) : (
@@ -344,7 +434,10 @@ export default function OnboardingPage() {
           {step < TOTAL_STEPS ? (
             <Button onClick={() => setStep((s) => s + 1)}>Next</Button>
           ) : (
-            <Button onClick={handleSubmit}>Save</Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving && <Loader2 className="size-3.5 animate-spin" />}
+              Save
+            </Button>
           )}
         </CardFooter>
       </Card>

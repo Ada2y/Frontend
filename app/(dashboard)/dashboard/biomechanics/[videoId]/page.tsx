@@ -1,225 +1,349 @@
 'use client';
 
-import {use} from 'react';
+import {use, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
-import {ArrowLeft, AlertTriangle, CheckCircle, Info} from 'lucide-react';
+import {AlertTriangle, ArrowLeft, CheckCircle, HelpCircle, Info, Loader2} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
-  MOCK_ANALYSES,
-  RISK_STYLES,
-  type MockBiomechanicsAnalysis,
-  type JointAngle,
-  type FlaggedIssue
-} from '@/lib/mocks/biomechanics';
-import type {InjurySeverity} from '@/lib/api';
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent
+} from '@/components/ui/accordion';
+import CoachCard from '@/app/(dashboard)/_components/CoachCard';
+import {cn} from '@/lib/utils';
+import {
+  ApiClient,
+  FOOTBALL_EXERCISES,
+  GYM_EXERCISES,
+  type AnalysisReport,
+  type CheckResult,
+  type CheckSeverity,
+  type VideoStatus
+} from '@/lib/api';
 
-function ScoreGauge({score}: {score: number}) {
-  const color = score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-600' : 'text-red-600';
-  const ringColor =
-    score >= 80 ? 'stroke-green-500' : score >= 60 ? 'stroke-amber-500' : 'stroke-red-500';
-  const circumference = 2 * Math.PI * 42;
-  const offset = circumference - (score / 100) * circumference;
+const POLL_INTERVAL_MS = 4000;
 
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative size-28">
-        <svg className="size-28 -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="42"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-muted"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="42"
-            fill="none"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className={ringColor}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-2xl font-bold ${color}`}>{score}</span>
-          <span className="text-[10px] text-muted-foreground">/ 100</span>
-        </div>
-      </div>
-      <span className="text-xs font-medium text-muted-foreground">Technique Score</span>
-    </div>
-  );
+const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
+
+const SEVERITY_STYLES: Record<CheckSeverity, {bg: string; text: string}> = {
+  info: {bg: 'bg-blue-500/10', text: 'text-blue-600'},
+  warn: {bg: 'bg-amber-500/10', text: 'text-amber-600'},
+  risk: {bg: 'bg-red-500/10', text: 'text-red-600'}
+};
+
+function exerciseLabel(exercise: string | null): string {
+  if (!exercise) return 'Exercise';
+  return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
 }
 
-function RiskBadge({level}: {level: InjurySeverity}) {
-  const style = RISK_STYLES[level];
+function SeverityChip({severity}: {severity: CheckSeverity}) {
+  const style = SEVERITY_STYLES[severity];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${style.bg} ${style.text}`}
+      className={cn(
+        'rounded-full px-2 py-0.5 text-[10px] font-medium capitalize',
+        style.bg,
+        style.text
+      )}
     >
-      {level !== 'none' && <AlertTriangle className="size-3" />}
-      {style.label} risk
+      {severity}
     </span>
   );
 }
 
-function JointAngleBar({angle}: {angle: JointAngle}) {
-  const barColor =
-    angle.status === 'normal'
-      ? 'bg-green-500'
-      : angle.status === 'warning'
-        ? 'bg-amber-500'
-        : 'bg-red-500';
-  const min = 0;
-  const max = 200;
-  const normalMin = (angle.normalRange[0] / max) * 100;
-  const normalMax = (angle.normalRange[1] / max) * 100;
-  const valuePos = (angle.angle / max) * 100;
+function OutcomeIcon({outcome}: {outcome: CheckResult['outcome']}) {
+  if (outcome === 'pass') return <CheckCircle className="size-4 shrink-0 text-green-600" />;
+  if (outcome === 'fail') return <AlertTriangle className="size-4 shrink-0 text-red-600" />;
+  return <HelpCircle className="size-4 shrink-0 text-muted-foreground" />;
+}
 
+function EvidenceImage({videoId, filename}: {videoId: string; filename: string}) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const urlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    ApiClient.fetchEvidenceBlob(videoId, filename)
+      .then((url) => {
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        urlRef.current = url;
+        setSrc(url);
+      })
+      .catch(() => !cancelled && setError(true));
+    return () => {
+      cancelled = true;
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    };
+  }, [videoId, filename]);
+
+  if (error) return <p className="text-xs text-muted-foreground">Evidence image unavailable.</p>;
+  if (!src) {
+    return (
+      <div className="flex h-40 w-full max-w-sm items-center justify-center rounded-lg bg-muted">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element -- blob: URL, next/image can't optimize it
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-foreground">{angle.joint}</span>
-        <span className="font-mono text-xs tabular-nums text-muted-foreground">
-          {angle.angle}°{' '}
-          <span className="text-[10px]">
-            ({angle.normalRange[0]}–{angle.normalRange[1]}°)
+    <img
+      src={src}
+      alt="Evidence frame"
+      className="w-full max-w-sm rounded-lg border border-border"
+    />
+  );
+}
+
+function CheckRow({videoId, check}: {videoId: string; check: CheckResult}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <OutcomeIcon outcome={check.outcome} />
+          <span className="text-sm font-medium capitalize text-foreground">
+            {check.check_id.replace(/_/g, ' ')}
           </span>
-        </span>
+        </div>
+        <SeverityChip severity={check.severity} />
       </div>
-      <div className="relative h-2 w-full rounded-full bg-muted">
-        <div
-          className="absolute h-full rounded-full bg-muted-foreground/20"
-          style={{left: `${normalMin}%`, width: `${normalMax - normalMin}%`}}
-        />
-        <div
-          className={`absolute h-full w-1.5 rounded-full ${barColor}`}
-          style={{left: `calc(${valuePos}% - 3px)`}}
-        />
-      </div>
+      {check.value != null && check.threshold != null && (
+        <p className="text-xs font-mono text-muted-foreground">
+          measured {check.value} (target {check.op} {check.threshold})
+        </p>
+      )}
+      {check.outcome === 'not_assessable' && (
+        <p className="text-xs text-muted-foreground">Not enough visibility to assess this check.</p>
+      )}
+      {check.message && <p className="text-sm text-foreground">{check.message}</p>}
+      {check.evidence_image && <EvidenceImage videoId={videoId} filename={check.evidence_image} />}
     </div>
   );
 }
 
-function IssueRow({issue}: {issue: FlaggedIssue}) {
-  const style = RISK_STYLES[issue.severity];
+function MetricsTable({metrics}: {metrics: Record<string, number>}) {
+  const entries = Object.entries(metrics);
+  if (entries.length === 0) return null;
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-foreground">{issue.joint}</span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${style.bg} ${style.text}`}
-        >
-          {style.label}
-        </span>
-      </div>
-      <p className="text-sm text-muted-foreground">{issue.issue}</p>
-      <span className="text-[11px] text-muted-foreground">{issue.frameRange}</span>
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+      {entries.map(([name, value]) => (
+        <div key={name} className="flex items-center justify-between gap-2 text-muted-foreground">
+          <span className="truncate">{name.replace(/_/g, ' ')}</span>
+          <span className="font-mono tabular-nums text-foreground">{value}</span>
+        </div>
+      ))}
     </div>
   );
 }
 
 export default function BiomechanicsReportPage({params}: {params: Promise<{videoId: string}>}) {
   const {videoId} = use(params);
-  const analysis = MOCK_ANALYSES.find((a) => a.videoSessionId === videoId);
+  const [status, setStatus] = useState<VideoStatus | null>(null);
+  const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [failureReason, setFailureReason] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!analysis) {
+  useEffect(() => {
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    async function check() {
+      try {
+        const s = await ApiClient.getVideoStatus(videoId);
+        if (cancelled) return;
+        setStatus(s.status);
+        setFailureReason(s.failure_reason);
+
+        if (s.status === 'completed') {
+          const r = await ApiClient.getReport(videoId);
+          if (!cancelled) setReport(r);
+          if (pollTimer) clearInterval(pollTimer);
+        } else if (s.status === 'failed') {
+          if (pollTimer) clearInterval(pollTimer);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load this video');
+        if (pollTimer) clearInterval(pollTimer);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    check();
+    pollTimer = setInterval(check, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [videoId]);
+
+  const backLink = (
+    <Link href="/dashboard/videos" className="w-fit">
+      <Button variant="ghost" size="sm">
+        <ArrowLeft className="mr-1 size-3" />
+        Back to videos
+      </Button>
+    </Link>
+  );
+
+  if (loading && !status) {
     return (
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
-          <p className="text-sm text-muted-foreground">Analysis not found for this video.</p>
-        </div>
-        <Link href="/dashboard/videos">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-1 size-3" />
-            Back to videos
-          </Button>
-        </Link>
+        {backLink}
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Link href="/dashboard/videos" className="w-fit">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-1 size-3" />
-            Back to videos
-          </Button>
-        </Link>
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        {backLink}
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status && status !== 'completed') {
+    return (
+      <div className="flex flex-col gap-6">
+        {backLink}
         <div>
           <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
           <p className="text-sm text-muted-foreground">
-            {analysis.videoFileName} — {analysis.athleteName} · {analysis.sport}
+            {status === 'failed'
+              ? (failureReason ?? 'Analysis failed.')
+              : 'Your video is still being analyzed — this page will update automatically.'}
+          </p>
+        </div>
+        {status !== 'failed' && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Status: {status}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!report) {
+    return (
+      <div className="flex flex-col gap-6">
+        {backLink}
+        <p className="text-sm text-muted-foreground">No report available for this video.</p>
+      </div>
+    );
+  }
+
+  const isWrongView = report.input.flags.includes('wrong_view');
+  const {summary} = report;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        {backLink}
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
+          <p className="text-sm text-muted-foreground">
+            {exerciseLabel(report.exercise)} · {new Date(report.created_at).toLocaleDateString()}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardContent className="flex flex-col items-center gap-6 py-6">
-            <ScoreGauge score={analysis.techniqueScore} />
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Injury Risk</span>
-              <RiskBadge level={analysis.injuryRiskLevel} />
+      {isWrongView && (
+        <Card className="border-amber-500/40">
+          <CardContent className="flex items-start gap-3 py-4">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                We couldn&apos;t assess this video
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{summary.headline}</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed text-foreground">{analysis.summaryEn}</p>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground" dir="rtl">
-              {analysis.summaryAr}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Joint Angles</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {analysis.jointAngles.map((ja) => (
-            <JointAngleBar key={ja.joint} angle={ja} />
-          ))}
-        </CardContent>
-      </Card>
-
-      {analysis.flaggedIssues.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Flagged Issues</CardTitle>
-              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                {analysis.flaggedIssues.length} issues
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {analysis.flaggedIssues.map((issue, i) => (
-              <IssueRow key={i} issue={issue} />
-            ))}
           </CardContent>
         </Card>
       )}
 
-      {analysis.flaggedIssues.length === 0 && (
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base">Summary</CardTitle>
+            <span className="text-xs text-muted-foreground">
+              View: {report.input.view.measured ?? 'unknown'} (expected {report.input.view.expected}
+              )
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm leading-relaxed text-foreground">{summary.headline}</p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className="text-green-600">{summary.passed} passed</span>
+            <span className="text-red-600">{summary.failed} failed</span>
+            <span className="text-muted-foreground">{summary.not_assessable} not assessable</span>
+            <span className="text-muted-foreground">{report.segmentation.count} reps detected</span>
+          </div>
+          {Object.keys(summary.severity_counts).length > 0 && (
+            <div className="flex gap-3">
+              {Object.entries(summary.severity_counts).map(([severity, count]) => (
+                <span key={severity} className="flex items-center gap-1.5">
+                  <SeverityChip severity={severity as CheckSeverity} />
+                  <span className="text-xs text-muted-foreground">×{count}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <CoachCard videoId={videoId} />
+
+      {report.reps.length > 0 && (
         <Card>
-          <CardContent className="flex items-center gap-3 py-6">
-            <CheckCircle className="size-5 text-green-600" />
-            <p className="text-sm text-foreground">No issues flagged. Technique looks good.</p>
+          <CardHeader>
+            <CardTitle className="text-base">Per-rep breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Accordion>
+              {report.reps.map((rep) => {
+                const repFailed = rep.checks.some((c) => c.outcome === 'fail');
+                return (
+                  <AccordionItem key={rep.index} value={`rep-${rep.index}`}>
+                    <AccordionTrigger>
+                      <span className="flex items-center gap-2">
+                        Rep {rep.index + 1}
+                        {repFailed ? (
+                          <AlertTriangle className="size-3.5 text-red-600" />
+                        ) : (
+                          <CheckCircle className="size-3.5 text-green-600" />
+                        )}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="flex flex-col gap-3">
+                        {rep.checks.map((check) => (
+                          <CheckRow key={check.check_id} videoId={videoId} check={check} />
+                        ))}
+                        <div>
+                          <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                            Metrics
+                          </p>
+                          <MetricsTable metrics={rep.metrics} />
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </CardContent>
         </Card>
       )}
@@ -227,7 +351,7 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
       <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
         <Info className="size-4 shrink-0" />
         Analysis generated on{' '}
-        {new Date(analysis.createdAt).toLocaleDateString(undefined, {
+        {new Date(report.created_at).toLocaleDateString(undefined, {
           month: 'long',
           day: 'numeric',
           year: 'numeric',

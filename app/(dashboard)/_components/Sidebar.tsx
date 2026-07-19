@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {cn} from '@/lib/utils';
-import {dashboardNavItems} from '@/lib/dashboard-nav';
+import {navItemsForRole} from '@/lib/dashboard-nav';
+import {useAuth} from '@/lib/auth-context';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const {user} = useAuth();
+  const navItems = navItemsForRole(user?.role);
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">
@@ -16,7 +19,7 @@ export default function Sidebar() {
         </Link>
       </div>
       <nav aria-label="Dashboard" className="flex flex-1 flex-col gap-1 px-3 py-2">
-        {dashboardNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
           return (

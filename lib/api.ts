@@ -19,7 +19,8 @@ function extractErrorMessage(err: ApiErrorResponse): string {
   return 'Request failed';
 }
 
-export type NutritionStatus = 'auto_approved' | 'pending_review';
+export type NutritionStatus =
+  'pending_review' | 'approved' | 'flagged' | 'rejected' | 'auto_approved';
 
 export type InjuryRiskLevel = 'low' | 'medium' | 'high';
 
@@ -37,36 +38,67 @@ export interface Team {
   players: TeamPlayer[];
 }
 
-export type SessionStatus = 'pending' | 'completed' | 'skipped';
+// SessionStatus intentionally removed - the backend has no per-day
+// complete/skipped/pending state (see TrainingSessionLog below).
 
-export interface TrainingPlanExercise {
-  name: string;
-  sets: number;
-  reps: number;
-  load: string;
-  rest_seconds: number;
+export type PlanStatus = 'draft' | 'active' | 'completed' | 'archived' | 'paused';
+
+export interface ExerciseRef {
+  id: string;
+  name_en: string;
+  name_ar: string;
+  difficulty: string | null;
+  demo_video_url: string | null;
 }
 
-export interface TrainingPlanDay {
-  day: string;
-  exercises: TrainingPlanExercise[];
-  is_rest_day: boolean;
-  status: SessionStatus;
+/** Matches TrainingPlanExerciseOut exactly - one row per assigned exercise,
+ * grouped client-side by day_of_week (0 = Monday .. 6 = Sunday). There is no
+ * per-day completion status on the backend; progress is tracked separately
+ * via TrainingSessionLog (see logTrainingSession). */
+export interface TrainingPlanExercise {
+  id: string;
+  day_of_week: number;
+  sets: number | null;
+  reps: number | null;
+  load_kg: number | null;
+  rest_seconds: number | null;
+  sequence_order: number;
+  exercise: ExerciseRef;
 }
 
 export interface TrainingPlan {
   id: string;
-  athlete_id: string;
-  week_start: string;
-  days: TrainingPlanDay[];
+  athlete_user_id: string;
+  title: string;
+  status: PlanStatus;
+  start_date: string | null;
+  end_date: string | null;
+  weekly_structure: Record<string, unknown> | null;
+  exercises: TrainingPlanExercise[];
 }
 
+export interface TrainingSessionLog {
+  id: string;
+  training_plan_id: string;
+  athlete_user_id: string;
+  completed_at: string;
+  day_of_week: number | null;
+  perceived_exertion: number | null;
+  notes: string | null;
+}
+
+/** Matches NutritionRecommendationOut exactly - the agent returns free-text
+ * guidance (Arabic + optional English), not a macro breakdown. */
 export interface NutritionRecommendation {
   id: string;
-  athlete_id: string;
+  athlete_user_id: string;
+  recommendation_ar: string;
+  recommendation_en: string | null;
+  considers_conditions: number[] | null;
   status: NutritionStatus;
-  summary: string;
-  macros: {protein: number; carbs: number; fats: number; calories: number};
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 }
 
 export type AgentType =
@@ -122,9 +154,238 @@ export interface UserProfile {
   status: string;
 }
 
+// --- Athlete profile / onboarding ---
+
+export type AthleteGender = 'male' | 'female' | 'unspecified';
+
+export interface AthleteProfile {
+  user_id: string;
+  date_of_birth: string | null;
+  gender: AthleteGender;
+  height_cm: number | null;
+  weight_kg: number | null;
+  dominant_sport: VideoSport | null;
+  fitness_level: string | null;
+  updated_at: string;
+}
+
+export interface AthleteProfileInput {
+  date_of_birth?: string | null;
+  gender?: AthleteGender;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  dominant_sport?: VideoSport | null;
+  fitness_level?: string | null;
+}
+
+export interface MedicalConditionCatalogItem {
+  id: number;
+  code: string;
+  name_en: string;
+  name_ar: string;
+  risk_notes: string | null;
+}
+
+export interface AthleteMedicalCondition {
+  medical_condition_id: number;
+  diagnosed_at: string | null;
+  notes: string | null;
+  verified_by_professional: boolean;
+  condition: MedicalConditionCatalogItem;
+}
+
+export interface BodyMetricEntry {
+  id: string;
+  recorded_at: string;
+  height_cm: number | null;
+  weight_kg: number | null;
+  bmi: number | null;
+  notes: string | null;
+}
+
+export interface Injury {
+  id: string;
+  body_part: string;
+  description: string | null;
+  severity: InjurySeverity;
+  occurred_at: string | null;
+  recovered_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface BiometricProfile {
+  id: string;
+  measured_at: string;
+  recommended_sport: VideoSport | null;
+  confidence_score: number | null;
+  notes: string | null;
+}
+
+// --- Video upload & biomechanics pipeline (AI integration M1/M4) ---
+
+// Scope for now: gym + football only (M4). The backend's SportCategory enum
+// has more values (basketball, athletics, other) for other parts of the
+// product, but the analysis pipeline only covers these two.
+export type VideoSport = 'gym' | 'football';
+
+export type GymExercise =
+  'squat' | 'deadlift' | 'bench_press' | 'push_up' | 'shoulder_press' | 'lat_pulldown';
+
+export type FootballExercise = 'landing';
+
+export type VideoExercise = GymExercise | FootballExercise;
+
+/** `view` mirrors the backend's VIEW_GUIDANCE (app/ai/cv_pipeline/constants.py)
+ * word-for-word - shown to the athlete before they film, since a wrong-angle
+ * video completes with the analysis skipped rather than failing outright. */
+export const GYM_EXERCISES: {value: GymExercise; label: string; view: string}[] = [
+  {value: 'squat', label: 'Squat', view: 'Film from the side, with your whole body in frame.'},
+  {
+    value: 'deadlift',
+    label: 'Deadlift',
+    view: 'Film from the side, with your whole body in frame.'
+  },
+  {
+    value: 'bench_press',
+    label: 'Bench Press',
+    view: 'Film from the side, with your whole body in frame.'
+  },
+  {value: 'push_up', label: 'Push-up', view: 'Film from the side, with your whole body in frame.'},
+  {
+    value: 'shoulder_press',
+    label: 'Shoulder Press',
+    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.'
+  },
+  {
+    value: 'lat_pulldown',
+    label: 'Lat Pulldown',
+    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.'
+  }
+];
+
+export const FOOTBALL_EXERCISES: {value: FootballExercise; label: string; view: string}[] = [
+  {
+    value: 'landing',
+    label: 'Jump Landing',
+    view: 'Film from the side, with the full jump-landing motion in frame.'
+  }
+];
+
+// Backend serializes Python str-enums by VALUE (lowercase), not member name.
+export type VideoStatus = 'uploaded' | 'queued' | 'processing' | 'completed' | 'failed';
+
+export interface VideoUploadResult {
+  analysis_id: string;
+  status: VideoStatus;
+  message: string;
+}
+
+export interface VideoListItem {
+  id: string;
+  original_filename: string | null;
+  sport: VideoSport;
+  exercise: VideoExercise | null;
+  status: VideoStatus;
+  duration_seconds: number | null;
+  failure_reason: string | null;
+  created_at: string;
+  headline: string | null;
+  rep_count: number | null;
+  passed: number | null;
+  failed: number | null;
+  flags: string[] | null;
+}
+
+export interface VideoStatusOut {
+  analysis_id: string;
+  status: VideoStatus;
+  failure_reason: string | null;
+  has_report: boolean;
+}
+
+export type CheckOutcome = 'pass' | 'fail' | 'not_assessable';
+export type CheckSeverity = 'info' | 'warn' | 'risk';
+
+export interface CheckResult {
+  check_id: string;
+  feature: string;
+  outcome: CheckOutcome;
+  severity: CheckSeverity;
+  value: number | null;
+  threshold: number | null;
+  op: '<=' | '>=';
+  message: string | null;
+  evidence_image: string | null;
+}
+
+export interface RepBlock {
+  index: number;
+  checks: CheckResult[];
+  metrics: Record<string, number>;
+}
+
+export interface AnalysisReport {
+  report_schema_version: number;
+  job_id: string;
+  created_at: string;
+  video_session_id: string;
+  exercise: VideoExercise | null;
+  input: {
+    domain: string;
+    category: string;
+    view: {expected: string | null; measured: string | null; ratio: number | null};
+    flags: string[];
+  };
+  segmentation: {mode: string; count: number};
+  summary: {
+    total_checks: number;
+    passed: number;
+    failed: number;
+    not_assessable: number;
+    severity_counts: Record<string, number>;
+    headline: string;
+  };
+  reps: RepBlock[];
+}
+
+export interface CoachMessage {
+  message_en: string | null;
+  message_ar: string | null;
+  in_scope: boolean;
+}
+
+export type TrendDirection = 'improving' | 'regressing' | 'stable' | 'neutral';
+
+export interface MetricTrend {
+  sessions: number;
+  first: number;
+  latest: number;
+  slope_per_week: number;
+  direction: TrendDirection;
+}
+
+/** {available: false, note} before a 2nd session exists for this exercise,
+ * otherwise a flat {metric_name: MetricTrend} map - matches the backend's
+ * TrendService output shape exactly (no wrapper object). */
+export type TrendsResult = {available: false; note: string} | Record<string, MetricTrend>;
+
+export type AppNotificationChannel = 'push' | 'email' | 'sms' | 'in_app';
+
+export interface NotificationItem {
+  id: string;
+  channel: AppNotificationChannel;
+  title: string;
+  body: string | null;
+  is_read: boolean;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  created_at: string;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-  const isFormBody = init?.body instanceof URLSearchParams;
+  const isFormBody = init?.body instanceof URLSearchParams || init?.body instanceof FormData;
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
@@ -137,6 +398,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const err: ApiErrorResponse = await res.json().catch(() => ({detail: 'Request failed'}));
     throw new Error(extractErrorMessage(err));
   }
+  // 204 No Content (e.g. DELETE endpoints) has no body - res.json() throws
+  // "Unexpected end of JSON input" if called on it.
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -213,6 +477,98 @@ export class ApiClient {
     }
   }
 
+  // --- Athlete profile / onboarding ---
+
+  static getMyProfile() {
+    return request<AthleteProfile>('/athletes/me/profile');
+  }
+
+  static createMyProfile(data: AthleteProfileInput) {
+    return request<AthleteProfile>('/athletes/me/profile', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static updateMyProfile(data: AthleteProfileInput) {
+    return request<AthleteProfile>('/athletes/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static listMedicalConditionsCatalog() {
+    return request<MedicalConditionCatalogItem[]>('/athletes/medical-conditions');
+  }
+
+  static listMyMedicalConditions() {
+    return request<AthleteMedicalCondition[]>('/athletes/me/medical-conditions');
+  }
+
+  static addMyMedicalCondition(data: {
+    medical_condition_code: string;
+    diagnosed_at?: string | null;
+    notes?: string | null;
+  }) {
+    return request<AthleteMedicalCondition>('/athletes/me/medical-conditions', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static removeMyMedicalCondition(conditionId: number) {
+    return request<void>(`/athletes/me/medical-conditions/${conditionId}`, {method: 'DELETE'});
+  }
+
+  static recordMyBodyMetrics(data: {height_cm?: number; weight_kg?: number; notes?: string}) {
+    return request<BodyMetricEntry>('/athletes/me/body-metrics', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static listMyBodyMetrics() {
+    return request<BodyMetricEntry[]>('/athletes/me/body-metrics');
+  }
+
+  static addMyInjury(data: {
+    body_part: string;
+    description?: string;
+    severity?: InjurySeverity;
+    occurred_at?: string;
+    recovered_at?: string;
+    notes?: string;
+  }) {
+    return request<Injury>('/athletes/me/injuries', {method: 'POST', body: JSON.stringify(data)});
+  }
+
+  static listMyInjuries() {
+    return request<Injury[]>('/athletes/me/injuries');
+  }
+
+  static updateMyInjury(
+    injuryId: string,
+    data: {
+      description?: string;
+      severity?: InjurySeverity;
+      recovered_at?: string | null;
+      notes?: string;
+    }
+  ) {
+    return request<Injury>(`/athletes/me/injuries/${injuryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static generateSportSuggestion() {
+    return request<BiometricProfile>('/athletes/me/sport-suggestion', {method: 'POST'});
+  }
+
+  static listSportSuggestions() {
+    return request<BiometricProfile[]>('/athletes/me/sport-suggestion');
+  }
+
   // --- FE-B owned endpoints ---
 
   static listTeams() {
@@ -223,14 +579,42 @@ export class ApiClient {
     return request<Team>('/teams', {method: 'POST', body: JSON.stringify(data)});
   }
 
+  /** Real LLM call under the hood - can take several seconds. Always
+   * returns a DRAFT plan; there's no activation step yet. */
+  static generateTrainingPlan(sport: VideoSport) {
+    return request<TrainingPlan>('/training-plans/generate', {
+      method: 'POST',
+      body: JSON.stringify({sport})
+    });
+  }
+
   static getTrainingPlan(id: string) {
     return request<TrainingPlan>(`/training-plans/${id}`);
   }
 
-  static logTrainingSession(planId: string, data: {day: string; completed: boolean}) {
-    return request<{status: string}>(`/training-plans/${planId}/logs`, {
+  /** athlete_user_id is derived server-side from the auth token, not sent
+   * here - the backend rejects (and would previously have trusted) a
+   * client-supplied id. */
+  static logTrainingSession(
+    planId: string,
+    data: {day_of_week?: number; perceived_exertion?: number; notes?: string}
+  ) {
+    return request<TrainingSessionLog>(`/training-plans/${planId}/logs`, {
       method: 'POST',
       body: JSON.stringify(data)
+    });
+  }
+
+  static listTrainingSessionLogs(planId: string) {
+    return request<TrainingSessionLog[]>(`/training-plans/${planId}/logs`);
+  }
+
+  /** Real LLM call under the hood. sport only narrows the RAG literature
+   * search - omit it to let the agent use the athlete's own history. */
+  static generateNutrition(sport?: VideoSport) {
+    return request<NutritionRecommendation>('/nutrition/generate', {
+      method: 'POST',
+      body: JSON.stringify(sport ? {sport} : {})
     });
   }
 
@@ -247,5 +631,113 @@ export class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(data)
     });
+  }
+
+  // --- Video upload & biomechanics pipeline ---
+
+  static uploadVideo(sport: VideoSport, file: File, exercise?: VideoExercise) {
+    const form = new FormData();
+    form.append('sport', sport);
+    if (exercise) form.append('exercise', exercise);
+    form.append('file', file);
+    return request<VideoUploadResult>('/videos/upload', {method: 'POST', body: form});
+  }
+
+  /** fetch() can't report upload progress, so real progress bars go through
+   * XMLHttpRequest instead. */
+  static uploadVideoWithProgress(
+    sport: VideoSport,
+    file: File,
+    exercise: VideoExercise | undefined,
+    onProgress: (percent: number) => void
+  ): Promise<VideoUploadResult> {
+    return new Promise((resolve, reject) => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      const form = new FormData();
+      form.append('sport', sport);
+      if (exercise) form.append('exercise', exercise);
+      form.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/videos/upload`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText) as VideoUploadResult);
+          return;
+        }
+        let message = 'Upload failed';
+        try {
+          message = extractErrorMessage(JSON.parse(xhr.responseText) as ApiErrorResponse);
+        } catch {
+          // response wasn't JSON - fall back to the generic message
+        }
+        reject(new Error(message));
+      };
+      xhr.onerror = () => reject(new Error('Upload failed'));
+      xhr.send(form);
+    });
+  }
+
+  static listVideos() {
+    return request<VideoListItem[]>('/videos');
+  }
+
+  static getVideoStatus(id: string) {
+    return request<VideoStatusOut>(`/videos/${id}/status`);
+  }
+
+  static getReport(id: string) {
+    return request<AnalysisReport>(`/videos/${id}/report`);
+  }
+
+  static getEvidenceUrl(id: string, filename: string) {
+    return `${API_BASE}/videos/${id}/evidence/${filename}`;
+  }
+
+  /** <img> can't send an Authorization header, so evidence images are
+   * fetched as an authenticated blob and turned into an object URL. Callers
+   * must revoke the returned URL (URL.revokeObjectURL) when done with it. */
+  static async fetchEvidenceBlob(id: string, filename: string): Promise<string> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const res = await fetch(ApiClient.getEvidenceUrl(id, filename), {
+      headers: token ? {Authorization: `Bearer ${token}`} : {}
+    });
+    if (!res.ok) throw new Error('Failed to load evidence image');
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  // --- Form coach (M2) ---
+
+  static getCoachMessage(videoId: string) {
+    return request<CoachMessage>(`/videos/${videoId}/coach-message`);
+  }
+
+  /** Real LLM call under the hood - can take 10-25s. Asking a question
+   * never overwrites the auto-generated summary GET returns. */
+  static askCoach(videoId: string, question?: string) {
+    return request<CoachMessage>(`/videos/${videoId}/coach-message`, {
+      method: 'POST',
+      body: JSON.stringify({question})
+    });
+  }
+
+  static getTrends(videoId: string) {
+    return request<TrendsResult>(`/videos/${videoId}/trends`);
+  }
+
+  // --- Notifications ---
+
+  static listNotifications(unreadOnly = false) {
+    return request<NotificationItem[]>(`/notifications?unread_only=${unreadOnly}`);
+  }
+
+  static markNotificationRead(id: string) {
+    return request<NotificationItem>(`/notifications/${id}/read`, {method: 'PATCH'});
   }
 }
