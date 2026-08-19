@@ -17,11 +17,19 @@ function exerciseLabel(exercise: string | null): string | null {
 export default function BiomechanicsPage() {
   const [videos, setVideos] = useState<VideoListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     ApiClient.listVideos()
-      .then((list) => !cancelled && setVideos(list.filter((v) => v.status === 'completed')))
+      .then((list) => {
+        if (cancelled) return;
+        setVideos(list.filter((v) => v.status === 'completed'));
+        setError(null);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load videos.');
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -37,7 +45,28 @@ export default function BiomechanicsPage() {
             Movement analysis and coaching feedback from your uploaded videos.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="grid grid-cols-1 gap-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-20 animate-pulse rounded-xl bg-card ring-1 ring-foreground/10"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Biomechanics</h1>
+          <p className="text-sm text-muted-foreground">
+            Movement analysis and coaching feedback from your uploaded videos.
+          </p>
+        </div>
+        <p className="text-sm text-red-600">{error}</p>
       </div>
     );
   }

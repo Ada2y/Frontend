@@ -383,7 +383,31 @@ export interface NotificationItem {
   created_at: string;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Refresh tokens rotate server-side on every use, so concurrent 401s must
+// share one in-flight refresh instead of each spending the same refresh_token.
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({refresh_token: refreshToken})
+    });
+    if (!res.ok) return false;
+    const tokens: AuthTokens = await res.json();
+    localStorage.setItem('access_token', tokens.access_token);
+    localStorage.setItem('refresh_token', tokens.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit, isRetry = false): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const isFormBody = init?.body instanceof URLSearchParams || init?.body instanceof FormData;
   const res = await fetch(`${API_BASE}${path}`, {
@@ -394,6 +418,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers
     }
   });
+  if (res.status === 401 && !isRetry && path !== '/auth/refresh' && path !== '/auth/login') {
+    refreshPromise ??= refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+    if (await refreshPromise) {
+      return request<T>(path, init, true);
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/login';
+    }
+  }
   if (!res.ok) {
     const err: ApiErrorResponse = await res.json().catch(() => ({detail: 'Request failed'}));
     throw new Error(extractErrorMessage(err));

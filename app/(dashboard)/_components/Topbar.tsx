@@ -3,11 +3,12 @@
 import {useState} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
-import {LogOut, Menu, X} from 'lucide-react';
+import {Home, LogOut, Menu, X} from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {navItemsForRole} from '@/lib/dashboard-nav';
 import {useAuth} from '@/lib/auth-context';
 import {Button} from '@/components/ui/button';
+import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import NotificationBell from './NotificationBell';
 
 export default function Topbar() {
@@ -36,6 +37,19 @@ export default function Topbar() {
             </span>
           </div>
         )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Go to home page"
+              render={<Link href="/" />}
+            >
+              <Home className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Home</TooltipContent>
+        </Tooltip>
         <NotificationBell />
         <Button
           variant="ghost"
