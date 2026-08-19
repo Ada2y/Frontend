@@ -63,7 +63,12 @@ export default function NotificationBell() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         render={
-          <Button variant="ghost" size="icon-sm" className="relative" aria-label="Notifications" />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="relative cursor-pointer"
+            aria-label="Notifications"
+          />
         }
       >
         <Bell className="size-4" />
