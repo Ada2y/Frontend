@@ -407,7 +407,12 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit, isRetry = false): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  isRetry = false,
+  skipAuthRedirect = false
+): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const isFormBody = init?.body instanceof URLSearchParams || init?.body instanceof FormData;
   const res = await fetch(`${API_BASE}${path}`, {
@@ -423,12 +428,18 @@ async function request<T>(path: string, init?: RequestInit, isRetry = false): Pr
       refreshPromise = null;
     });
     if (await refreshPromise) {
-      return request<T>(path, init, true);
+      return request<T>(path, init, true, skipAuthRedirect);
     }
     if (typeof window !== 'undefined') {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
+      // /auth/me is polled from every page (including public marketing pages)
+      // just to probe whether someone is logged in - a 401 there simply means
+      // "anonymous visitor", not "your session died", so it must never force
+      // a redirect away from whatever public page they're looking at.
+      if (!skipAuthRedirect && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
   }
   if (!res.ok) {
@@ -495,7 +506,7 @@ export class ApiClient {
   }
 
   static me() {
-    return request<UserProfile>('/auth/me');
+    return request<UserProfile>('/auth/me', undefined, false, true);
   }
 
   static logout() {

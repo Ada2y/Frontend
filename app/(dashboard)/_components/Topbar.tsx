@@ -43,6 +43,7 @@ export default function Topbar() {
               variant="ghost"
               size="icon-sm"
               aria-label="Go to home page"
+              nativeButton={false}
               render={<Link href="/" />}
             >
               <Home className="size-4" />
@@ -54,6 +55,7 @@ export default function Topbar() {
         <Button
           variant="ghost"
           size="icon-sm"
+          className="cursor-pointer"
           aria-label="Sign out"
           title="Sign out"
           onClick={() => logout()}

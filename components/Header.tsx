@@ -9,22 +9,22 @@ import {useAuth} from '@/lib/auth-context';
 const navItems = [
   {
     label: 'Features',
-    href: '#features',
+    href: '/#features',
     hasDropdown: false
   },
   {
     label: 'Built For',
-    href: '#solutions',
+    href: '/#solutions',
     hasDropdown: false
   },
   {
     label: 'Why Ada2y',
-    href: '#highlights',
+    href: '/#highlights',
     hasDropdown: false
   },
   {
     label: 'Pricing',
-    href: '#pricing',
+    href: '/#pricing',
     hasDropdown: false
   }
 ] as const;
@@ -138,6 +138,12 @@ export default function Header() {
                   <span className="inline-flex items-center justify-center h-8 rounded-md px-3 text-xs font-medium text-[#08090a]">
                     {user.full_name}
                   </span>
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all shadow-sm shadow-[#08090a]/10 border border-transparent bg-[#ffffff] ring-1 ring-[#08090a]/10 duration-200 hover:bg-[#f7f8f8]/50 h-8 rounded-md px-3 text-xs text-[#08090a]"
+                  >
+                    <span>Dashboard</span>
+                  </Link>
                   <button
                     onClick={logout}
                     className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-all h-8 rounded-md px-3 text-xs text-[#62666d] hover:bg-[#08090a]/5 hover:text-[#08090a] cursor-pointer"

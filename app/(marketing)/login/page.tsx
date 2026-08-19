@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useEffect, type FormEvent} from 'react';
+import {useState, useEffect, useRef, type FormEvent} from 'react';
 import Link from 'next/link';
 import {ApiClient} from '@/lib/api';
 
@@ -47,13 +47,16 @@ export default function LoginPage() {
     }
   }
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
     function tryInit() {
-      if (cancelled || !clientId) return;
+      if (cancelled || !clientId || initializedRef.current) return;
       if (!window.google) return;
+      initializedRef.current = true;
 
       window.google.accounts.id.initialize({
         client_id: clientId,
