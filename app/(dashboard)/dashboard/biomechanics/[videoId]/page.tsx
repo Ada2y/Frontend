@@ -15,6 +15,7 @@ import CoachCard from '@/app/(dashboard)/_components/CoachCard';
 import {cn} from '@/lib/utils';
 import {
   ApiClient,
+  exerciseGifUrl,
   FOOTBALL_EXERCISES,
   GYM_EXERCISES,
   type AnalysisReport,
@@ -246,6 +247,7 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
 
   const isWrongView = report.input.flags.includes('wrong_view');
   const {summary} = report;
+  const formGif = exerciseGifUrl(report.exercise);
 
   return (
     <div className="flex flex-col gap-6">
@@ -258,6 +260,27 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           </p>
         </div>
       </div>
+
+      {formGif && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Correct form reference</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-start gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element -- gif is a static asset */}
+              <img
+                src={formGif}
+                alt={`${exerciseLabel(report.exercise)} correct form`}
+                className="w-full max-w-sm rounded-lg border border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                Follow this motion as your reference while reviewing your rep breakdown below.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isWrongView && (
         <Card className="border-amber-500/40">

@@ -272,6 +272,14 @@ export const FOOTBALL_EXERCISES: {value: FootballExercise; label: string; view: 
   }
 ];
 
+/** Self-hosted correct-form GIFs under /public/exercise-gifs, one per gym exercise. */
+export function exerciseGifUrl(exercise: VideoExercise | null | undefined): string | null {
+  if (!exercise) return null;
+  return GYM_EXERCISES.some((e) => e.value === exercise)
+    ? `/exercise-gifs/${exercise}.gif`
+    : null;
+}
+
 // Backend serializes Python str-enums by VALUE (lowercase), not member name.
 export type VideoStatus = 'uploaded' | 'queued' | 'processing' | 'completed' | 'failed';
 
