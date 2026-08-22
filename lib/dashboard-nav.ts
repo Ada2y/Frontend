@@ -7,6 +7,7 @@ import {
   ShieldAlert,
   Video,
   Activity,
+  ShieldCheck,
   User,
   Users,
   Users2,
@@ -39,6 +40,7 @@ export const dashboardNavItems: DashboardNavItem[] = [
   },
   {label: 'Videos', href: '/dashboard/videos', icon: Video, roles: ATHLETE_ONLY},
   {label: 'Biomechanics', href: '/dashboard/biomechanics', icon: Activity, roles: ATHLETE_ONLY},
+  {label: 'Injury Risk', href: '/dashboard/injury-risk', icon: ShieldCheck, roles: ATHLETE_ONLY},
   {label: 'Team', href: '/dashboard/team', icon: Users, roles: COACH_ONLY},
   {
     label: 'Review Queue',
