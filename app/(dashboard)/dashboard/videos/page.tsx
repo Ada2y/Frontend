@@ -61,13 +61,27 @@ function formatExercise(exercise: VideoExercise | null): string | null {
   return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
 }
 
-function StatusBadge({status}: {status: VideoStatus}) {
-  const colors = STATUS_COLORS[status];
+/** A video that finished processing but measured nothing (0 reps, wrong
+ * camera angle) is NOT a success. Showing it green as "completed" told the
+ * athlete everything was fine and gave them no reason to re-record. */
+function StatusBadge({video}: {video: VideoListItem}) {
+  const needsRetry = video.status === 'completed' && video.assessable === false;
+
+  if (needsRetry) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
+        <AlertCircle className="size-3" />
+        Retry needed
+      </span>
+    );
+  }
+
+  const colors = STATUS_COLORS[video.status];
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${colors.bg} ${colors.text}`}
     >
-      {status}
+      {video.status}
     </span>
   );
 }
@@ -351,7 +365,7 @@ export default function VideosPage() {
                   <CardTitle className="text-sm truncate">
                     {v.original_filename ?? 'Untitled video'}
                   </CardTitle>
-                  <StatusBadge status={v.status} />
+                  <StatusBadge video={v} />
                 </div>
               </CardHeader>
               <CardContent>
@@ -361,11 +375,16 @@ export default function VideosPage() {
                   <span>{formatDuration(v.duration_seconds)}</span>
                   <span>{formatDate(v.created_at)}</span>
                 </div>
-                {v.headline && v.status === 'completed' && (
+                {v.headline && v.status === 'completed' && v.assessable !== false && (
                   <p className="mt-2 text-xs text-foreground">{v.headline}</p>
                 )}
                 {v.failure_reason && (
                   <p className="mt-2 text-xs text-red-600">{v.failure_reason}</p>
+                )}
+                {v.status === 'completed' && v.assessable === false && (
+                  <p className="mt-2 text-xs text-red-600">
+                    {v.headline ?? "We couldn't measure this video."} Re-record and upload again.
+                  </p>
                 )}
                 {v.status === 'completed' && (
                   <Link

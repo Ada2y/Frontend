@@ -11,6 +11,7 @@ import {
   type TrendDirection,
   type TrendsResult
 } from '@/lib/api';
+import {describeMetric} from '@/lib/metrics';
 
 const SUMMARY_POLL_INTERVAL_MS = 4000;
 // The coach-message task is dispatched right after the report completes and
@@ -34,13 +35,20 @@ const DIRECTION_COLOR: Record<TrendDirection, string> = {
 
 function trendEntries(trends: TrendsResult | null): [string, MetricTrend][] {
   if (!trends || ('available' in trends && trends.available === false)) return [];
-  return Object.entries(trends as Record<string, MetricTrend>);
+  const all = Object.entries(trends as Record<string, MetricTrend>);
+  // Meaningful first: anything actually moving, worst-to-best, then the flat
+  // ones. Dumping 28 raw metrics in source order buried the two that matter.
+  const rank = (d: TrendDirection) => (d === 'regressing' ? 0 : d === 'improving' ? 1 : 2);
+  return all.sort(([, a], [, b]) => rank(a.direction) - rank(b.direction));
 }
+
+const TRENDS_COLLAPSED_COUNT = 4;
 
 export default function CoachCard({videoId}: {videoId: string}) {
   const [summary, setSummary] = useState<CoachMessage | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [trends, setTrends] = useState<TrendsResult | null>(null);
+  const [showAllTrends, setShowAllTrends] = useState(false);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<CoachMessage | null>(null);
@@ -138,20 +146,36 @@ export default function CoachCard({videoId}: {videoId: string}) {
         {entries.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <p className="text-xs font-medium text-muted-foreground">Trends</p>
-            {entries.map(([name, stats]) => {
-              const Icon = DIRECTION_ICON[stats.direction];
-              return (
-                <div key={name} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-muted-foreground">{name.replace(/_/g, ' ')}</span>
-                  <span
-                    className={`flex items-center gap-1 font-mono ${DIRECTION_COLOR[stats.direction]}`}
-                  >
-                    <Icon className="size-3" />
-                    {stats.first} → {stats.latest}
-                  </span>
-                </div>
-              );
-            })}
+            {(showAllTrends ? entries : entries.slice(0, TRENDS_COLLAPSED_COUNT)).map(
+              ([name, stats]) => {
+                const Icon = DIRECTION_ICON[stats.direction];
+                const described = describeMetric(name);
+                return (
+                  <div key={name} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">{described.label}</span>
+                    <span
+                      className={`flex items-center gap-1 font-mono tabular-nums ${DIRECTION_COLOR[stats.direction]}`}
+                    >
+                      <Icon className="size-3" />
+                      {stats.first}
+                      {described.unit ?? ''} → {stats.latest}
+                      {described.unit ?? ''}
+                    </span>
+                  </div>
+                );
+              }
+            )}
+            {entries.length > TRENDS_COLLAPSED_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllTrends((v) => !v)}
+                className="mt-1 self-start text-xs font-medium text-primary underline"
+              >
+                {showAllTrends
+                  ? 'Show less'
+                  : `Show ${entries.length - TRENDS_COLLAPSED_COUNT} more`}
+              </button>
+            )}
           </div>
         )}
 

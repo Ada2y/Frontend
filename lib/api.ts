@@ -301,6 +301,9 @@ export interface VideoListItem {
   passed: number | null;
   failed: number | null;
   flags: string[] | null;
+  /** False when a completed video measured nothing (0 reps / wrong view).
+   * null while processing or on outright failure. */
+  assessable: boolean | null;
 }
 
 export interface VideoStatusOut {
