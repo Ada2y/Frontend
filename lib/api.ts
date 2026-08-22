@@ -315,20 +315,53 @@ export type CheckSeverity = 'info' | 'warn' | 'risk';
 
 export interface CheckResult {
   check_id: string;
+  /** Human-readable check name, e.g. "excessive torso lean". */
+  label: string;
   feature: string;
   outcome: CheckOutcome;
   severity: CheckSeverity;
   value: number | null;
   threshold: number | null;
   op: '<=' | '>=';
+  unit: string | null;
   message: string | null;
+  /** One sentence for PASS as well as fail - `message` is null on a pass. */
+  plain: string;
   evidence_image: string | null;
+  /** Corrected-pose overlay. Only present for failed checks whose geometry
+   * could be solved honestly (never for range_-based checks). */
+  correction_image: string | null;
+}
+
+export interface LabelledMetric {
+  key: string;
+  label: string;
+  unit: string | null;
+  value: number;
+}
+
+export interface FocusItem {
+  check_id: string;
+  label: string;
+  severity: CheckSeverity;
+  reps_affected: number;
+  of_reps: number;
+  message: string | null;
+}
+
+export interface Coaching {
+  what_went_well: string[];
+  focus_on: FocusItem[];
+  next_session_cue: string;
 }
 
 export interface RepBlock {
   index: number;
   checks: CheckResult[];
   metrics: Record<string, number>;
+  /** Same numbers carrying their own display names, so the UI never has to
+   * guess what "range_angle_torso_incline" means. */
+  labelled_metrics: LabelledMetric[];
 }
 
 export interface AnalysisReport {
@@ -345,6 +378,9 @@ export interface AnalysisReport {
   };
   segmentation: {mode: string; count: number};
   summary: {
+    /** False when nothing was measured (0 reps, wrong view, all checks NaN).
+     * Branch on this, never on "0 failures". */
+    assessable: boolean;
     total_checks: number;
     passed: number;
     failed: number;
@@ -352,7 +388,31 @@ export interface AnalysisReport {
     severity_counts: Record<string, number>;
     headline: string;
   };
+  coaching: Coaching;
+  /** Folded in from the stored analysis so one call renders the page. */
+  coach_message_en: string | null;
+  coach_message_ar: string | null;
+  technique_score: number | null;
   reps: RepBlock[];
+}
+
+// --- Injury-risk screening -------------------------------------------------
+
+export interface RiskFactor {
+  key: string;
+  label: string;
+  points: number;
+  detail: string;
+  evidence: Record<string, unknown>;
+}
+
+export interface RiskAssessment {
+  available: boolean;
+  score: number | null;
+  band: 'low' | 'moderate' | 'elevated' | null;
+  factors: RiskFactor[];
+  note: string;
+  disclaimer: string;
 }
 
 export interface CoachMessage {
@@ -615,6 +675,10 @@ export class ApiClient {
     });
   }
 
+  static getInjuryRisk() {
+    return request<RiskAssessment>('/athletes/me/injury-risk');
+  }
+
   static generateSportSuggestion() {
     return request<BiometricProfile>('/athletes/me/sport-suggestion', {method: 'POST'});
   }
@@ -640,6 +704,16 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify({sport})
     });
+  }
+
+  static listTrainingPlans() {
+    return request<TrainingPlan[]>('/training-plans');
+  }
+
+  /** Server-side source of truth for "my plan" - replaces remembering an id
+   * in localStorage, which lost the plan on logout or in another browser. */
+  static getCurrentTrainingPlan() {
+    return request<TrainingPlan | null>('/training-plans/current');
   }
 
   static getTrainingPlan(id: string) {
@@ -670,6 +744,14 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(sport ? {sport} : {})
     });
+  }
+
+  static listNutrition() {
+    return request<NutritionRecommendation[]>('/nutrition');
+  }
+
+  static getCurrentNutrition() {
+    return request<NutritionRecommendation | null>('/nutrition/current');
   }
 
   static getNutrition(id: string) {

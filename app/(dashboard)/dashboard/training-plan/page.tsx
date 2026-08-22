@@ -12,7 +12,6 @@ import {
   type TrainingSessionLog,
   type VideoSport
 } from '@/lib/api';
-import {LAST_TRAINING_PLAN_ID_KEY} from '@/lib/last-generated';
 
 // Backend day_of_week is 1=Monday..7=Sunday (TrainingPlanExercise's DB
 // check constraint) - index 0 here is deliberately unused so DAY_NAMES[n]
@@ -89,9 +88,7 @@ function formatLogDate(iso: string) {
 export default function TrainingPlanPage() {
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [logs, setLogs] = useState<TrainingSessionLog[]>([]);
-  const [loading, setLoading] = useState(
-    () => typeof window !== 'undefined' && !!localStorage.getItem(LAST_TRAINING_PLAN_ID_KEY)
-  );
+  const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<VideoSport>('gym');
   const [generating, setGenerating] = useState(false);
   const [logging, setLogging] = useState(false);
@@ -100,21 +97,28 @@ export default function TrainingPlanPage() {
   const [logMessage, setLogMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Server-side source of truth. This used to read an id out of localStorage,
+  // so the plan vanished on logout or in another browser and the only way back
+  // was to Generate again - a real, billed LLM call every time.
   useEffect(() => {
-    const savedId =
-      typeof window !== 'undefined' ? localStorage.getItem(LAST_TRAINING_PLAN_ID_KEY) : null;
-    if (!savedId) return;
-    // Fetched independently on purpose: a failure loading the (secondary)
-    // session-log history must never wipe out an otherwise-valid saved plan.
-    ApiClient.getTrainingPlan(savedId)
-      .then(setPlan)
-      .catch(() => localStorage.removeItem(LAST_TRAINING_PLAN_ID_KEY))
-      .finally(() => setLoading(false));
-    ApiClient.listTrainingSessionLogs(savedId)
-      .then(setLogs)
-      .catch(() => {
-        // history is a bonus, not core to the page - fail silently
-      });
+    let cancelled = false;
+    ApiClient.getCurrentTrainingPlan()
+      .then((current) => {
+        if (cancelled || !current) return;
+        setPlan(current);
+        // Fetched separately on purpose: losing the (secondary) session-log
+        // history must never wipe out an otherwise-valid plan.
+        ApiClient.listTrainingSessionLogs(current.id)
+          .then((rows) => !cancelled && setLogs(rows))
+          .catch(() => {
+            // history is a bonus, not core to the page - fail silently
+          });
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleGenerate() {
@@ -124,7 +128,6 @@ export default function TrainingPlanPage() {
       const newPlan = await ApiClient.generateTrainingPlan(sport);
       setPlan(newPlan);
       setLogs([]);
-      localStorage.setItem(LAST_TRAINING_PLAN_ID_KEY, newPlan.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate a training plan.');
     } finally {
@@ -187,7 +190,7 @@ export default function TrainingPlanPage() {
           </label>
           <Button onClick={handleGenerate} disabled={generating}>
             {generating && <Loader2 className="size-3.5 animate-spin" />}
-            Generate plan
+            Create my plan
           </Button>
         </div>
 
@@ -220,7 +223,15 @@ export default function TrainingPlanPage() {
             {plan.title} · <span className="capitalize">{plan.status}</span>
           </p>
         </div>
-        <Button variant="outline" onClick={handleGenerate} disabled={generating}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (!window.confirm('This replaces your current plan. Continue?')) return;
+            handleGenerate();
+          }}
+          disabled={generating}
+        >
           {generating && <Loader2 className="size-3.5 animate-spin" />}
           Regenerate
         </Button>

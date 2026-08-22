@@ -183,14 +183,20 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-size: 16px;
-    line-height: 24px;
+    /* No absolute px override here. It used to be 16px while every Tailwind
+       text-* utility resolved against an 88% rem root (~14px), so unstyled
+       text rendered LARGER than its styled neighbours - the type wasn't just
+       small, it was internally inconsistent. */
+    line-height: 1.5;
     letter-spacing: normal;
   }
   html {
     @apply font-sans;
     scroll-behavior: smooth;
-    font-size: 88%;
+    /* Was 88%, which shrank the rem root to ~14.08px and dragged every
+       rem-based Tailwind size down with it: text-sm rendered at ~12.3px and
+       text-xs at ~10.6px (used 69 times). Back to a true 16px root. */
+    font-size: 100%;
   }
   code,
   pre,

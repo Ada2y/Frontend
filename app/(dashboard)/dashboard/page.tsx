@@ -11,35 +11,105 @@ import {useAuth} from '@/lib/auth-context';
 import {
   ApiClient,
   type NutritionRecommendation,
+  type RiskAssessment,
   type TrainingPlan,
   type VideoListItem
 } from '@/lib/api';
-import {LAST_NUTRITION_ID_KEY, LAST_TRAINING_PLAN_ID_KEY} from '@/lib/last-generated';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+}
+
+const BAND_STYLES: Record<string, {label: string; ring: string; text: string}> = {
+  low: {label: 'Low', ring: 'ring-green-500/25', text: 'text-green-600'},
+  moderate: {label: 'Moderate', ring: 'ring-amber-500/25', text: 'text-amber-600'},
+  elevated: {label: 'Elevated', ring: 'ring-red-500/25', text: 'text-red-600'}
+};
+
+/** The one primary element on this page. A readiness score is the product's
+ * headline number, so it gets display type and its own card - not a fourth
+ * equal-weight tile. */
+function ReadinessHero({risk}: {risk: RiskAssessment | null}) {
+  if (!risk) return null;
+
+  if (!risk.available) {
+    return (
+      <Card className="p-8">
+        <CardContent className="flex flex-col gap-2 px-0">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Injury risk screening
+          </span>
+          <p className="text-lg text-foreground">Not enough data yet</p>
+          <p className="text-sm text-muted-foreground">{risk.note}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const band = BAND_STYLES[risk.band ?? 'low'] ?? BAND_STYLES.low;
+  const top = risk.factors.filter((f) => f.points > 0).slice(0, 3);
+
+  return (
+    <Card className={`p-8 ring-1 ${band.ring}`}>
+      <CardContent className="flex flex-col gap-6 px-0">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Injury risk screening
+            </span>
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono text-5xl leading-none font-semibold tabular-nums text-foreground">
+                {risk.score}
+              </span>
+              <span className={`text-lg font-medium ${band.text}`}>{band.label}</span>
+            </div>
+          </div>
+          <Link href="/dashboard/profile" className="text-xs font-medium text-primary underline">
+            Update my profile
+          </Link>
+        </div>
+
+        {top.length > 0 && (
+          <ul className="flex flex-col gap-2 border-t border-border pt-4">
+            {top.map((f) => (
+              <li key={f.key} className="flex items-start justify-between gap-3 text-sm">
+                <span className="text-foreground">{f.label}</span>
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                  +{f.points}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="text-xs text-muted-foreground">{risk.disclaimer}</p>
+      </CardContent>
+    </Card>
+  );
 }
 
 function AthleteOverview() {
   const [videos, setVideos] = useState<VideoListItem[]>([]);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [nutrition, setNutrition] = useState<NutritionRecommendation | null>(null);
+  const [risk, setRisk] = useState<RiskAssessment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    const planId = localStorage.getItem(LAST_TRAINING_PLAN_ID_KEY);
-    const nutritionId = localStorage.getItem(LAST_NUTRITION_ID_KEY);
-
+    // All server-side now - no localStorage, so the dashboard is correct in
+    // any browser and after a logout.
     Promise.all([
       ApiClient.listVideos().catch(() => []),
-      planId ? ApiClient.getTrainingPlan(planId).catch(() => null) : Promise.resolve(null),
-      nutritionId ? ApiClient.getNutrition(nutritionId).catch(() => null) : Promise.resolve(null)
-    ]).then(([videoList, planResult, nutritionResult]) => {
+      ApiClient.getCurrentTrainingPlan().catch(() => null),
+      ApiClient.getCurrentNutrition().catch(() => null),
+      ApiClient.getInjuryRisk().catch(() => null)
+    ]).then(([videoList, planResult, nutritionResult, riskResult]) => {
       if (cancelled) return;
       setVideos(videoList);
       setPlan(planResult);
       setNutrition(nutritionResult);
+      setRisk(riskResult);
       setLoading(false);
     });
 
@@ -51,7 +121,22 @@ function AthleteOverview() {
   const recentVideos = videos.slice(0, 5);
   const hasNothing = !loading && recentVideos.length === 0 && !plan && !nutrition;
 
-  if (loading) return null;
+  if (loading) {
+    // Skeletons shaped like the real content, not the word "Loading".
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="h-36 animate-pulse rounded-xl bg-card ring-1 ring-foreground/10" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-32 animate-pulse rounded-xl bg-card ring-1 ring-foreground/10"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (hasNothing) {
     return (
@@ -64,106 +149,112 @@ function AthleteOverview() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Dumbbell className="size-4" />
-            Training plan
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          {plan ? (
-            <div className="flex flex-col gap-1">
-              <p className="text-sm text-foreground">{plan.title}</p>
-              <p className="text-xs text-muted-foreground capitalize">{plan.status}</p>
-              <Link
-                href="/dashboard/training-plan"
-                className="mt-2 text-xs font-medium text-primary underline"
-              >
-                View plan
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted-foreground">No plan generated yet.</p>
-              <Link
-                href="/dashboard/training-plan"
-                className="text-xs font-medium text-primary underline"
-              >
-                Generate one
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-4">
+      <ReadinessHero risk={risk} />
 
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Apple className="size-4" />
-            Nutrition
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          {nutrition ? (
-            <div className="flex flex-col gap-2">
-              <NutritionStatusBadge status={nutrition.status} />
-              <Link
-                href="/dashboard/nutrition"
-                className="text-xs font-medium text-primary underline"
-              >
-                View recommendation
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted-foreground">No recommendation generated yet.</p>
-              <Link
-                href="/dashboard/nutrition"
-                className="text-xs font-medium text-primary underline"
-              >
-                Generate one
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="p-8">
+          <CardHeader className="px-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Dumbbell className="size-4" />
+              Training plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-0">
+            {plan ? (
+              <div className="flex flex-col gap-1">
+                <p className="text-sm text-foreground">{plan.title}</p>
+                <p className="text-xs text-muted-foreground capitalize">{plan.status}</p>
+                <Link
+                  href="/dashboard/training-plan"
+                  className="mt-2 text-xs font-medium text-primary underline"
+                >
+                  View plan
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">No plan generated yet.</p>
+                <Link
+                  href="/dashboard/training-plan"
+                  className="text-xs font-medium text-primary underline"
+                >
+                  Generate one
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="size-4" />
-            Recent videos
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 px-0">
-          {recentVideos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No videos uploaded yet.</p>
-          ) : (
-            recentVideos.map((v) => (
-              <Link
-                key={v.id}
-                href={
-                  v.status === 'completed' ? `/dashboard/biomechanics/${v.id}` : '/dashboard/videos'
-                }
-                className="flex items-center justify-between gap-2 text-xs hover:text-primary"
-              >
-                <span className="truncate text-foreground">
-                  {v.original_filename ?? 'Untitled video'}
-                </span>
-                <span className="shrink-0 text-muted-foreground">{formatDate(v.created_at)}</span>
-              </Link>
-            ))
-          )}
-          <Link
-            href="/dashboard/videos"
-            className="mt-1 text-xs font-medium text-primary underline"
-          >
-            View all videos
-          </Link>
-        </CardContent>
-      </Card>
+        <Card className="p-8">
+          <CardHeader className="px-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Apple className="size-4" />
+              Nutrition
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-0">
+            {nutrition ? (
+              <div className="flex flex-col gap-2">
+                <NutritionStatusBadge status={nutrition.status} />
+                <Link
+                  href="/dashboard/nutrition"
+                  className="text-xs font-medium text-primary underline"
+                >
+                  View recommendation
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">No recommendation generated yet.</p>
+                <Link
+                  href="/dashboard/nutrition"
+                  className="text-xs font-medium text-primary underline"
+                >
+                  Generate one
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="p-8">
+          <CardHeader className="px-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="size-4" />
+              Recent videos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 px-0">
+            {recentVideos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No videos uploaded yet.</p>
+            ) : (
+              recentVideos.map((v) => (
+                <Link
+                  key={v.id}
+                  href={
+                    v.status === 'completed'
+                      ? `/dashboard/biomechanics/${v.id}`
+                      : '/dashboard/videos'
+                  }
+                  className="flex items-center justify-between gap-2 text-xs hover:text-primary"
+                >
+                  <span className="truncate text-foreground">
+                    {v.original_filename ?? 'Untitled video'}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">{formatDate(v.created_at)}</span>
+                </Link>
+              ))
+            )}
+            <Link
+              href="/dashboard/videos"
+              className="mt-1 text-xs font-medium text-primary underline"
+            >
+              View all videos
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

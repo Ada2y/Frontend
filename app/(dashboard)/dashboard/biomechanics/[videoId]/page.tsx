@@ -21,6 +21,7 @@ import {
   type AnalysisReport,
   type CheckResult,
   type CheckSeverity,
+  type RepBlock,
   type VideoStatus
 } from '@/lib/api';
 
@@ -91,7 +92,7 @@ function EvidenceImage({videoId, filename}: {videoId: string; filename: string})
       </div>
     );
   }
-  // eslint-disable-next-line @next/next/no-img-element -- blob: URL, next/image can't optimize it
+
   return (
     <img
       src={src}
@@ -107,35 +108,62 @@ function CheckRow({videoId, check}: {videoId: string; check: CheckResult}) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <OutcomeIcon outcome={check.outcome} />
-          <span className="text-sm font-medium capitalize text-foreground">
-            {check.check_id.replace(/_/g, ' ')}
+          <span className="text-base font-medium capitalize text-foreground">
+            {check.label ?? check.check_id.replace(/_/g, ' ')}
           </span>
         </div>
-        <SeverityChip severity={check.severity} />
+        {check.outcome === 'fail' && <SeverityChip severity={check.severity} />}
       </div>
-      {check.value != null && check.threshold != null && (
-        <p className="text-xs font-mono text-muted-foreground">
-          measured {check.value} (target {check.op} {check.threshold})
-        </p>
+
+      {/* Coaching first. The raw measurement lives in Technical details. */}
+      <p className="text-sm leading-relaxed text-foreground">
+        {check.plain ?? check.message ?? ''}
+      </p>
+
+      {check.correction_image ? (
+        <div className="flex flex-col gap-1.5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {check.evidence_image && (
+              <figure className="flex flex-col gap-1">
+                <figcaption className="text-xs font-medium text-muted-foreground">
+                  Your rep
+                </figcaption>
+                <EvidenceImage videoId={videoId} filename={check.evidence_image} />
+              </figure>
+            )}
+            <figure className="flex flex-col gap-1">
+              <figcaption className="text-xs font-medium text-muted-foreground">
+                With the correction
+              </figcaption>
+              <EvidenceImage videoId={videoId} filename={check.correction_image} />
+            </figure>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The cyan outline is an illustrative guide generated from your own frame, not an exact
+            biomechanical prescription.
+          </p>
+        </div>
+      ) : (
+        check.evidence_image && <EvidenceImage videoId={videoId} filename={check.evidence_image} />
       )}
-      {check.outcome === 'not_assessable' && (
-        <p className="text-xs text-muted-foreground">Not enough visibility to assess this check.</p>
-      )}
-      {check.message && <p className="text-sm text-foreground">{check.message}</p>}
-      {check.evidence_image && <EvidenceImage videoId={videoId} filename={check.evidence_image} />}
     </div>
   );
 }
 
-function MetricsTable({metrics}: {metrics: Record<string, number>}) {
-  const entries = Object.entries(metrics);
+function MetricsTable({rep}: {rep: RepBlock}) {
+  const entries =
+    rep.labelled_metrics ??
+    Object.entries(rep.metrics).map(([key, value]) => ({key, label: key, unit: null, value}));
   if (entries.length === 0) return null;
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-      {entries.map(([name, value]) => (
-        <div key={name} className="flex items-center justify-between gap-2 text-muted-foreground">
-          <span className="truncate">{name.replace(/_/g, ' ')}</span>
-          <span className="font-mono tabular-nums text-foreground">{value}</span>
+    <div className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+      {entries.map((m) => (
+        <div key={m.key} className="flex items-center justify-between gap-2 text-muted-foreground">
+          <span className="truncate">{m.label}</span>
+          <span className="font-mono tabular-nums text-foreground">
+            {m.value}
+            {m.unit ?? ''}
+          </span>
         </div>
       ))}
     </div>
@@ -275,10 +303,54 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </Card>
       )}
 
+      {/* Hero: what to actually do. Counts and geometry are secondary. */}
+      {report.coaching && summary.assessable !== false && (
+        <Card className="p-8">
+          <CardContent className="flex flex-col gap-5 px-0">
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Focus on next
+              </span>
+              <p className="text-2xl leading-snug font-medium text-foreground">
+                {report.coaching.next_session_cue}
+              </p>
+            </div>
+
+            {report.coaching.focus_on.length > 0 && (
+              <ul className="flex flex-col gap-2">
+                {report.coaching.focus_on.map((f) => (
+                  <li key={f.check_id} className="flex items-start gap-2 text-sm">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                    <span className="text-foreground">
+                      <span className="capitalize">{f.label}</span>
+                      <span className="text-muted-foreground">
+                        {' '}
+                        - {f.reps_affected} of {f.of_reps} reps
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {report.coaching.what_went_well.length > 0 && (
+              <ul className="flex flex-col gap-2 border-t border-border pt-4">
+                {report.coaching.what_went_well.map((line) => (
+                  <li key={line} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="mt-0.5 size-4 shrink-0 text-green-600" />
+                    <span className="capitalize text-foreground">{line}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Summary</CardTitle>
+            <CardTitle className="text-base">Session summary</CardTitle>
             <span className="text-xs text-muted-foreground">
               View: {report.input.view.measured ?? 'unknown'} (expected {report.input.view.expected}
               )
@@ -287,6 +359,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm leading-relaxed text-foreground">{summary.headline}</p>
+          {report.technique_score != null && (
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-4xl font-semibold tabular-nums text-foreground">
+                {report.technique_score}
+              </span>
+              <span className="text-sm text-muted-foreground">/ 100 technique score</span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-4 text-sm">
             <span className="text-green-600">{summary.passed} passed</span>
             <span className="text-red-600">{summary.failed} failed</span>
@@ -334,12 +414,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
                         {rep.checks.map((check) => (
                           <CheckRow key={check.check_id} videoId={videoId} check={check} />
                         ))}
-                        <div>
-                          <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                            Metrics
-                          </p>
-                          <MetricsTable metrics={rep.metrics} />
-                        </div>
+                        <details className="rounded-lg border border-border p-3">
+                          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                            Technical details
+                          </summary>
+                          <div className="mt-2">
+                            <MetricsTable rep={rep} />
+                          </div>
+                        </details>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
