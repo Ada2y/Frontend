@@ -475,6 +475,29 @@ export interface RiskAssessment {
   disclaimer: string;
 }
 
+export type ReadinessVerdict = 'train' | 'modify' | 'rest';
+
+export interface ReadinessReason {
+  key: string;
+  verdict: ReadinessVerdict;
+  text: string;
+  evidence: Record<string, unknown>;
+}
+
+export interface Readiness {
+  available: boolean;
+  verdict: ReadinessVerdict | null;
+  headline: string;
+  /** Worst-first: reasons[0] is the one that decided the verdict. */
+  reasons: ReadinessReason[];
+  /** Signals the verdict actually read. */
+  inputs_used: string[];
+  /** Signals it could not read. Shown so "unknown" never reads as "fine". */
+  inputs_missing: string[];
+  risk_score: number | null;
+  disclaimer: string;
+}
+
 export interface CoachMessage {
   message_en: string | null;
   message_ar: string | null;
@@ -737,6 +760,11 @@ export class ApiClient {
 
   static getInjuryRisk() {
     return request<RiskAssessment>('/athletes/me/injury-risk');
+  }
+
+  /** "Should I train today?" - works with no wearable connected. */
+  static getReadiness() {
+    return request<Readiness>('/athletes/me/readiness');
   }
 
   static generateSportSuggestion() {
