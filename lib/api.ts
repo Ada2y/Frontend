@@ -1009,6 +1009,30 @@ export class ApiClient {
     return request<PoseSequence>(`/videos/${id}/pose-sequence`);
   }
 
+  /** Downloads the shareable PDF. `<a download>` can't send an Authorization
+   * header, so this fetches the bytes and hands the browser a blob URL. */
+  static async downloadReportPdf(id: string): Promise<void> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const res = await fetch(`${API_BASE}/videos/${id}/report.pdf`, {
+      headers: token ? {Authorization: `Bearer ${token}`} : {}
+    });
+    if (!res.ok) throw new Error('Failed to generate the PDF report');
+
+    const disposition = res.headers.get('content-disposition') ?? '';
+    const match = /filename="([^"]+)"/.exec(disposition);
+    const url = URL.createObjectURL(await res.blob());
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] ?? `ada2y-report-${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   static getEvidenceUrl(id: string, filename: string) {
     return `${API_BASE}/videos/${id}/evidence/${filename}`;
   }

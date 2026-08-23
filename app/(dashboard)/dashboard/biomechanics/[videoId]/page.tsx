@@ -2,7 +2,15 @@
 
 import {use, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
-import {AlertTriangle, ArrowLeft, CheckCircle, HelpCircle, Info, Loader2} from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
+  Download,
+  HelpCircle,
+  Info,
+  Loader2
+} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
@@ -101,6 +109,36 @@ function EvidenceImage({videoId, filename}: {videoId: string; filename: string})
       alt="Evidence frame"
       className="w-full max-w-sm rounded-lg border border-border"
     />
+  );
+}
+
+function DownloadPdfButton({videoId}: {videoId: string}) {
+  const [state, setState] = useState<'idle' | 'working' | 'error'>('idle');
+
+  async function handleDownload() {
+    setState('working');
+    try {
+      await ApiClient.downloadReportPdf(videoId);
+      setState('idle');
+    } catch {
+      setState('error');
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={state === 'working'}>
+        {state === 'working' ? (
+          <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+        ) : (
+          <Download className="mr-1.5 size-3.5" />
+        )}
+        Share as PDF
+      </Button>
+      {state === 'error' && (
+        <span className="text-xs text-red-600">Couldn&apos;t generate the PDF.</span>
+      )}
+    </div>
   );
 }
 
@@ -298,11 +336,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         {backLink}
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
-          <p className="text-sm text-muted-foreground">
-            {exerciseLabel(report.exercise)} · {new Date(report.created_at).toLocaleDateString()}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
+            <p className="text-sm text-muted-foreground">
+              {exerciseLabel(report.exercise)} · {new Date(report.created_at).toLocaleDateString()}
+            </p>
+          </div>
+          <DownloadPdfButton videoId={videoId} />
         </div>
       </div>
 
