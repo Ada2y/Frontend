@@ -334,6 +334,60 @@ export interface CheckResult {
   /** Corrected-pose overlay. Only present for failed checks whose geometry
    * could be solved honestly (never for range_-based checks). */
   correction_image: string | null;
+  /** The same correction as coordinates. Present whenever correction_image is.
+   * Preferred over the baked JPEG: drawing both skeletons on a neutral canvas
+   * stays readable on busy footage, where the overlay does not. */
+  correction_pose: CorrectionPose | null;
+}
+
+export interface PosePoint {
+  name: string;
+  x: number;
+  y: number;
+}
+
+export interface CorrectionPose {
+  frame_index: number;
+  /** Names of the joints this check judged - draw these emphasised. */
+  highlight: string[];
+  summary: string | null;
+  /** Indexed by COCO-17 keypoint order. null = never detected, so skip any
+   * bone touching it rather than drawing to the origin. */
+  actual: (PosePoint | null)[];
+  target: (PosePoint | null)[];
+}
+
+export interface PoseKeypoint {
+  name: string;
+  x: number;
+  y: number;
+  confidence: number;
+}
+
+export interface PoseFrame {
+  frame_index: number;
+  timestamp_ms: number;
+  keypoints: PoseKeypoint[];
+  joint_angles: Record<string, number> | null;
+}
+
+export interface RepWindow {
+  index: number;
+  window_start_frame: number;
+  window_end_frame: number;
+  failed_checks: string[];
+}
+
+export interface PoseSequence {
+  video_session_id: string;
+  fps: number;
+  width: number | null;
+  height: number | null;
+  /** Bone list as index pairs into keypoint_names. */
+  skeleton: [number, number][];
+  keypoint_names: string[];
+  frames: PoseFrame[];
+  reps: RepWindow[];
 }
 
 export interface LabelledMetric {
@@ -360,6 +414,9 @@ export interface Coaching {
 
 export interface RepBlock {
   index: number;
+  /** Frame bounds of the corrected rep window, on the pose-sequence timeline. */
+  window_start_frame: number | null;
+  window_end_frame: number | null;
   checks: CheckResult[];
   metrics: Record<string, number>;
   /** Same numbers carrying their own display names, so the UI never has to
@@ -832,6 +889,12 @@ export class ApiClient {
 
   static getReport(id: string) {
     return request<AnalysisReport>(`/videos/${id}/report`);
+  }
+
+  /** Per-frame skeleton for replay. 404s when the video has no pose frames
+   * (older analyses, or a run that never got that far). */
+  static getPoseSequence(id: string) {
+    return request<PoseSequence>(`/videos/${id}/pose-sequence`);
   }
 
   static getEvidenceUrl(id: string, filename: string) {

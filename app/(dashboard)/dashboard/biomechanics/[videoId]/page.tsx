@@ -12,6 +12,8 @@ import {
   AccordionContent
 } from '@/components/ui/accordion';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
+import CorrectionCanvas from '@/app/(dashboard)/_components/CorrectionCanvas';
+import SkeletonPlayer from '@/app/(dashboard)/_components/SkeletonPlayer';
 import {cn} from '@/lib/utils';
 import {
   ApiClient,
@@ -120,7 +122,22 @@ function CheckRow({videoId, check}: {videoId: string; check: CheckResult}) {
         {check.plain ?? check.message ?? ''}
       </p>
 
-      {check.correction_image ? (
+      {/* Prefer the vector comparison: the baked overlay is unreadable
+          whenever the source footage is busy. The JPEG stays as the fallback
+          for reports generated before correction_pose existed. */}
+      {check.correction_pose ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <CorrectionCanvas correction={check.correction_pose} />
+          {check.evidence_image && (
+            <figure className="flex flex-col gap-1">
+              <figcaption className="text-xs font-medium text-muted-foreground">
+                The frame this came from
+              </figcaption>
+              <EvidenceImage videoId={videoId} filename={check.evidence_image} />
+            </figure>
+          )}
+        </div>
+      ) : check.correction_image ? (
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {check.evidence_image && (
@@ -387,6 +404,9 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
       </Card>
 
       <CoachCard videoId={videoId} />
+
+      {/* Renders itself away when the analysis has no stored pose frames. */}
+      <SkeletonPlayer videoId={videoId} />
 
       {report.reps.length > 0 && (
         <Card>
