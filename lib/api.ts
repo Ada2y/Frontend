@@ -475,6 +475,33 @@ export interface RiskAssessment {
   disclaimer: string;
 }
 
+export interface Milestone {
+  key: string;
+  label: string;
+  description: string;
+  achieved_on: string;
+}
+
+export interface WeeklyActivity {
+  week_start: string;
+  active_days: number;
+  in_progress: boolean;
+}
+
+export interface Streaks {
+  current_streak: number;
+  longest_streak: number;
+  active_days_last_7: number;
+  active_days_last_30: number;
+  total_active_days: number;
+  weekly: WeeklyActivity[];
+  milestones: Milestone[];
+  /** Echoed back so a surprising streak is explainable. */
+  timezone: string;
+  /** False means the streak is still alive but today hasn't counted yet. */
+  trained_today: boolean;
+}
+
 export interface ComparisonSession {
   analysis_session_id: string;
   video_session_id: string;
@@ -814,6 +841,14 @@ export class ApiClient {
   /** Exercises this athlete actually has sessions for. */
   static listMyExercises() {
     return request<string[]>('/athletes/me/exercises');
+  }
+
+  /** Streaks are a question about the athlete's local calendar day, so the
+   * browser's timezone is passed rather than assuming UTC. */
+  static getStreaks() {
+    const tz =
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+    return request<Streaks>(`/athletes/me/streaks${tz ? `?tz=${encodeURIComponent(tz)}` : ''}`);
   }
 
   static generateSportSuggestion() {

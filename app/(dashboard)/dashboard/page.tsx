@@ -16,6 +16,7 @@ import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
 import OnboardingBanner from '@/app/(dashboard)/_components/OnboardingBanner';
 import NutritionStatusBadge from '@/app/(dashboard)/_components/NutritionStatusBadge';
+import StreakCard from '@/app/(dashboard)/_components/StreakCard';
 import {useAuth} from '@/lib/auth-context';
 import {
   ApiClient,
@@ -216,6 +217,8 @@ function AthleteOverview() {
   return (
     <div className="flex flex-col gap-4">
       <ReadinessHero readiness={readiness} risk={risk} />
+
+      <StreakCard />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-8">
