@@ -475,6 +475,45 @@ export interface RiskAssessment {
   disclaimer: string;
 }
 
+export interface ComparisonSession {
+  analysis_session_id: string;
+  video_session_id: string;
+  date: string;
+  rep_count: number;
+  passed: number;
+  failed: number;
+  pass_rate: number | null;
+  headline: string | null;
+  metrics: Record<string, number>;
+}
+
+export interface ComparisonDelta {
+  key: string;
+  label: string;
+  unit: string | null;
+  current: number;
+  previous: number;
+  best: number | null;
+  change: number;
+  direction: TrendDirection;
+  /** False when no rule governs this metric. Never colour those green - it
+   * would be asserting a direction nobody has defined. */
+  has_polarity: boolean;
+}
+
+export interface SessionComparison {
+  available: boolean;
+  exercise: string;
+  note: string | null;
+  /** Oldest first, ready to plot. */
+  sessions: ComparisonSession[];
+  current?: ComparisonSession | null;
+  previous?: ComparisonSession | null;
+  best?: ComparisonSession | null;
+  is_personal_best?: boolean;
+  deltas: ComparisonDelta[];
+}
+
 export type ReadinessVerdict = 'train' | 'modify' | 'rest';
 
 export interface ReadinessReason {
@@ -765,6 +804,16 @@ export class ApiClient {
   /** "Should I train today?" - works with no wearable connected. */
   static getReadiness() {
     return request<Readiness>('/athletes/me/readiness');
+  }
+
+  /** This session vs previous vs personal best, for one exercise. */
+  static getSessionComparison(exercise: string) {
+    return request<SessionComparison>(`/athletes/me/comparison/${exercise}`);
+  }
+
+  /** Exercises this athlete actually has sessions for. */
+  static listMyExercises() {
+    return request<string[]>('/athletes/me/exercises');
   }
 
   static generateSportSuggestion() {
