@@ -20,6 +20,17 @@ function weekLabel(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
 }
 
+/** Only label a week when the month changes, so the axis reads "Jul ... Aug"
+ * instead of eight bare day-of-month numbers with no month anywhere. */
+function axisLabel(iso: string, previousIso: string | undefined): string {
+  const date = new Date(iso);
+  const day = date.getDate();
+  if (!previousIso || new Date(previousIso).getMonth() !== date.getMonth()) {
+    return date.toLocaleDateString(undefined, {month: 'short'});
+  }
+  return String(day);
+}
+
 export default function StreakCard() {
   const [streaks, setStreaks] = useState<Streaks | null>(null);
 
@@ -62,12 +73,12 @@ export default function StreakCard() {
             <span className="font-mono text-4xl leading-none font-semibold tabular-nums text-foreground">
               {streaks.current_streak}
             </span>
-            <span className="mt-1 text-xs text-muted-foreground">
-              day streak
-              {/* The streak survives an untrained today - saying so is the
-                  difference between a nudge and a false accusation. */}
-              {streaks.current_streak > 0 && !streaks.trained_today && ' · today not counted yet'}
-            </span>
+            {/* The streak survives an untrained today - saying so is the
+                difference between a nudge and a false accusation. */}
+            <span className="mt-1 text-xs text-muted-foreground">day streak</span>
+            {streaks.current_streak > 0 && !streaks.trained_today && (
+              <span className="text-[11px] text-muted-foreground">today not counted yet</span>
+            )}
           </div>
           <div className="flex flex-col">
             <span className="font-mono text-xl leading-none tabular-nums text-muted-foreground">
@@ -77,26 +88,31 @@ export default function StreakCard() {
           </div>
         </div>
 
+        {/* A zero week used to render as a hairline indistinguishable from an
+            axis, so "trained nothing" and "no bar drawn" looked identical.
+            Every week now gets a full-height track with the active days
+            filled in, which also gives the eye a baseline to compare against. */}
         <div className="flex items-end gap-1.5">
-          {streaks.weekly.map((week) => (
-            <div key={week.week_start} className="flex flex-1 flex-col items-center gap-1">
-              <div className="flex h-12 w-full items-end">
-                <div
-                  className={cn(
-                    'w-full rounded-sm transition-all',
-                    week.active_days > 0 ? 'bg-primary' : 'bg-muted',
-                    week.in_progress && 'opacity-60'
-                  )}
-                  style={{
-                    height: `${Math.max((week.active_days / MAX_DAYS_PER_WEEK) * 100, 6)}%`
-                  }}
-                  title={`${weekLabel(week.week_start)}: ${week.active_days} active days${
-                    week.in_progress ? ' (this week so far)' : ''
-                  }`}
-                />
+          {streaks.weekly.map((week, i) => (
+            <div key={week.week_start} className="flex flex-1 flex-col items-center gap-1.5">
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                {week.active_days || '·'}
+              </span>
+              <div
+                className="flex h-14 w-full items-end rounded-sm bg-muted"
+                title={`Week of ${weekLabel(week.week_start)}: ${week.active_days} of 7 days${
+                  week.in_progress ? ' (in progress)' : ''
+                }`}
+              >
+                {week.active_days > 0 && (
+                  <div
+                    className={cn('w-full rounded-sm bg-primary', week.in_progress && 'opacity-60')}
+                    style={{height: `${(week.active_days / MAX_DAYS_PER_WEEK) * 100}%`}}
+                  />
+                )}
               </div>
               <span className="text-[10px] text-muted-foreground">
-                {weekLabel(week.week_start).split(' ')[1]}
+                {axisLabel(week.week_start, streaks.weekly[i - 1]?.week_start)}
               </span>
             </div>
           ))}

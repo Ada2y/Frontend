@@ -18,6 +18,10 @@ const SPEEDS = [0.5, 1, 2] as const;
 type Speed = (typeof SPEEDS)[number];
 
 const COLOR_BODY = '#e4e6ef';
+// Left and right in distinct hues: in a side view the limbs overlap, and one
+// colour turns a readable pose into a tangle of crossing lines.
+const COLOR_LEFT = '#7dd3fc';
+const COLOR_RIGHT = '#fca5a5';
 const COLOR_HOT = '#f87171';
 const COLOR_FLOOR = 'rgba(148, 163, 184, 0.35)';
 
@@ -47,6 +51,13 @@ export default function SkeletonPlayer({videoId}: {videoId: string}) {
         if (cancelled) return;
         setSeq(data);
         setState(data.frames.length > 0 ? 'ready' : 'unavailable');
+        // Frame 0 is usually the athlete walking into position - the least
+        // legible frame in the clip, and captioned "between reps".
+        const firstRep = data.reps[0];
+        if (firstRep) {
+          const at = data.frames.findIndex((f) => f.frame_index >= firstRep.window_start_frame);
+          if (at > 0) setIndex(at);
+        }
       })
       // 404 is the normal case for analyses that predate pose storage, so this
       // degrades to a quiet note rather than an error.
@@ -112,8 +123,12 @@ export default function SkeletonPlayer({videoId}: {videoId: string}) {
 
     const points = pointsOfFrame(seq, index);
     const failing = (currentRep?.failed_checks.length ?? 0) > 0;
-    drawHead(ctx, points, t, failing ? COLOR_HOT : COLOR_BODY);
-    drawPose(ctx, points, t, {color: failing ? COLOR_HOT : COLOR_BODY});
+    drawHead(ctx, points, t, COLOR_BODY);
+    drawPose(ctx, points, t, {
+      color: COLOR_BODY,
+      leftColor: failing ? COLOR_HOT : COLOR_LEFT,
+      rightColor: failing ? COLOR_HOT : COLOR_RIGHT
+    });
   }, [seq, bounds, allFramePoints, ankleIndices, index, currentRep]);
 
   useEffect(() => {
@@ -230,9 +245,7 @@ export default function SkeletonPlayer({videoId}: {videoId: string}) {
                   title={failed ? `Failed: ${rep.failed_checks.join(', ')}` : 'All checks passed'}
                   className={cn(
                     'rounded-md border px-2 py-1 text-xs font-medium transition-colors',
-                    failed
-                      ? 'border-red-500/40 text-red-600'
-                      : 'border-green-500/40 text-green-600',
+                    failed ? 'border-danger/40 text-danger' : 'border-success/40 text-success',
                     active && 'bg-muted ring-1 ring-primary'
                   )}
                 >
@@ -287,6 +300,17 @@ export default function SkeletonPlayer({videoId}: {videoId: string}) {
           />
           <span className="w-14 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
             {seconds.toFixed(2)}s
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded" style={{backgroundColor: COLOR_LEFT}} />
+            Left side
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded" style={{backgroundColor: COLOR_RIGHT}} />
+            Right side
           </span>
         </div>
 

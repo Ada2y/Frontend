@@ -5,6 +5,7 @@ import {Check, Dumbbell, Loader2} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
+import {cn} from '@/lib/utils';
 import {
   ApiClient,
   type TrainingPlan,
@@ -27,6 +28,21 @@ const DAY_NAMES = [
   'Sunday'
 ];
 
+// Borg CR10. Anchors matter more than the numbers - an unlabelled 1-10 slider
+// gets answered inconsistently, which is worse than no data for a ratio that
+// compares this week against the same athlete's baseline.
+const RPE_SCALE = [
+  {value: 2, label: '2 — very easy'},
+  {value: 3, label: '3 — easy'},
+  {value: 4, label: '4 — comfortable'},
+  {value: 5, label: '5 — moderate'},
+  {value: 6, label: '6 — somewhat hard'},
+  {value: 7, label: '7 — hard'},
+  {value: 8, label: '8 — very hard'},
+  {value: 9, label: '9 — near maximal'},
+  {value: 10, label: '10 — maximal'}
+];
+
 const SPORTS: {value: VideoSport; label: string}[] = [
   {value: 'gym', label: 'Gym'},
   {value: 'football', label: 'Football'}
@@ -37,7 +53,10 @@ const selectClassName =
 
 function formatLoad(ex: TrainingPlanExercise): string {
   if (ex.load_kg == null) return 'Bodyweight';
-  return `${ex.load_kg}kg`;
+  // The API sends a NUMERIC, so 80 arrives as "80.00". Two decimals on a
+  // barbell load implies a precision no plate set has.
+  const kg = Math.round(ex.load_kg * 10) / 10;
+  return `${kg} kg`;
 }
 
 function formatRest(seconds: number | null) {
@@ -47,13 +66,43 @@ function formatRest(seconds: number | null) {
   return `${minutes % 1 === 0 ? minutes : minutes.toFixed(1)}m rest`;
 }
 
-function DayCard({dayIndex, exercises}: {dayIndex: number; exercises: TrainingPlanExercise[]}) {
+/** JS getDay() is 0=Sunday; the backend's day_of_week is 1=Monday..7=Sunday. */
+function todayDayOfWeek(): number {
+  const js = new Date().getDay();
+  return js === 0 ? 7 : js;
+}
+
+function DayCard({
+  dayIndex,
+  exercises,
+  isToday
+}: {
+  dayIndex: number;
+  exercises: TrainingPlanExercise[];
+  isToday: boolean;
+}) {
   const isRestDay = exercises.length === 0;
 
   return (
-    <Card size="sm" className="flex flex-col p-8">
+    // The page's job is answering "what am I doing today", and seven equal
+    // cards made the athlete work that out for themselves.
+    <Card
+      size="sm"
+      className={cn(
+        'flex flex-col p-8',
+        isToday && 'ring-1 ring-primary',
+        isRestDay && 'opacity-70'
+      )}
+    >
       <CardHeader className="px-0">
-        <CardTitle className="text-base">{DAY_NAMES[dayIndex]}</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base">
+          {DAY_NAMES[dayIndex]}
+          {isToday && (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary-foreground uppercase">
+              Today
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4 px-0">
         {isRestDay ? (
@@ -93,7 +142,9 @@ export default function TrainingPlanPage() {
   const [generating, setGenerating] = useState(false);
   const [logging, setLogging] = useState(false);
   const [logDay, setLogDay] = useState('');
+  const [logRpe, setLogRpe] = useState('');
   const [logNotes, setLogNotes] = useState('');
+  const today = todayDayOfWeek();
   const [logMessage, setLogMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,11 +193,13 @@ export default function TrainingPlanPage() {
     try {
       await ApiClient.logTrainingSession(plan.id, {
         day_of_week: logDay ? Number(logDay) : undefined,
+        perceived_exertion: logRpe ? Number(logRpe) : undefined,
         notes: logNotes || undefined
       });
       setLogs(await ApiClient.listTrainingSessionLogs(plan.id));
       setLogMessage('Session logged.');
       setLogDay('');
+      setLogRpe('');
       setLogNotes('');
     } catch (err) {
       setLogMessage(err instanceof Error ? err.message : 'Failed to log session.');
@@ -194,7 +247,7 @@ export default function TrainingPlanPage() {
           </Button>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         {!generating && (
           <EmptyState
@@ -220,7 +273,10 @@ export default function TrainingPlanPage() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Training Plan</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.title} · <span className="capitalize">{plan.status}</span>
+            {/* plan.status is an internal enum (DRAFT/ACTIVE/ARCHIVED). The
+                athlete only ever sees their current plan, so the state adds
+                nothing and "Draft" reads as though it isn't ready. */}
+            {plan.title}
           </p>
         </div>
         <Button
@@ -239,11 +295,16 @@ export default function TrainingPlanPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-          <DayCard key={day} dayIndex={day} exercises={exercisesByDay.get(day) ?? []} />
+          <DayCard
+            key={day}
+            dayIndex={day}
+            exercises={exercisesByDay.get(day) ?? []}
+            isToday={day === today}
+          />
         ))}
       </div>
 
-      <Card className="max-w-xl p-8">
+      <Card className="max-w-3xl p-8">
         <CardHeader className="px-0">
           <CardTitle className="text-base">Log a completed session</CardTitle>
         </CardHeader>
@@ -263,6 +324,38 @@ export default function TrainingPlanPage() {
               ))}
             </select>
           </label>
+          <fieldset className="flex flex-col gap-1.5 border-0 p-0">
+            <legend className="text-xs font-medium text-muted-foreground">How hard was it?</legend>
+            {/* This is the load proxy behind the injury-risk workload factor,
+                the training-load ratio and the "hard session recently"
+                readiness rule. The form never asked for it, so all three were
+                running on the backend's neutral fallback. */}
+            <div className="flex flex-wrap gap-1">
+              {RPE_SCALE.map((step) => (
+                <button
+                  key={step.value}
+                  type="button"
+                  onClick={() => setLogRpe(logRpe === String(step.value) ? '' : String(step.value))}
+                  aria-pressed={logRpe === String(step.value)}
+                  title={step.label}
+                  className={cn(
+                    'size-8 rounded-md font-mono text-xs tabular-nums transition-colors',
+                    logRpe === String(step.value)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                  )}
+                >
+                  {step.value}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {logRpe
+                ? RPE_SCALE.find((s) => String(s.value) === logRpe)?.label
+                : 'Optional, but it powers your readiness and injury-risk screening.'}
+            </span>
+          </fieldset>
+
           <textarea
             rows={2}
             placeholder="Optional notes"

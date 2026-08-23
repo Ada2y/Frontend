@@ -200,8 +200,8 @@ export default function OnboardingPage() {
           <p className="text-sm text-muted-foreground">Complete your athlete profile.</p>
         </div>
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-card px-8 py-16 text-center ring-1 ring-foreground/10">
-          <div className="flex size-10 items-center justify-center rounded-full bg-green-500/10">
-            <CheckCircle className="size-5 text-green-600" />
+          <div className="flex size-10 items-center justify-center rounded-full bg-success-bg">
+            <CheckCircle className="size-5 text-success" />
           </div>
           <h2 className="text-base font-medium text-foreground">Profile saved!</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -416,7 +416,7 @@ export default function OnboardingPage() {
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-600">
+            <div className="flex items-center gap-2 text-sm text-danger">
               <AlertCircle className="size-4 shrink-0" />
               {error}
             </div>

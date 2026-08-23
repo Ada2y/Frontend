@@ -10,7 +10,7 @@
 
 import {useEffect, useMemo, useState} from 'react';
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
-import {Minus, Trophy, TrendingDown, TrendingUp} from 'lucide-react';
+import {Equal, Trophy, TrendingDown, TrendingUp} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
 import {
@@ -25,10 +25,10 @@ import {cn} from '@/lib/utils';
 const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
 
 const DIRECTION: Record<TrendDirection, {icon: typeof TrendingUp; className: string}> = {
-  improving: {icon: TrendingUp, className: 'text-green-600'},
-  regressing: {icon: TrendingDown, className: 'text-red-600'},
-  stable: {icon: Minus, className: 'text-muted-foreground'},
-  neutral: {icon: Minus, className: 'text-muted-foreground'}
+  improving: {icon: TrendingUp, className: 'text-success'},
+  regressing: {icon: TrendingDown, className: 'text-danger'},
+  stable: {icon: Equal, className: 'text-muted-foreground'},
+  neutral: {icon: Equal, className: 'text-muted-foreground'}
 };
 
 function exerciseLabel(value: string): string {
@@ -163,7 +163,7 @@ export default function SessionComparison() {
 
       {!loading && data?.available && (
         <>
-          <Card className={cn(data.is_personal_best && 'ring-1 ring-green-500/25')}>
+          <Card className={cn(data.is_personal_best && 'ring-1 ring-success/25')}>
             <CardContent className="flex flex-col gap-6 p-8">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="flex flex-col gap-1">
@@ -179,7 +179,7 @@ export default function SessionComparison() {
                   </div>
                 </div>
                 {data.is_personal_best && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-600">
+                  <span className="flex items-center gap-1.5 rounded-full bg-success-bg px-3 py-1 text-sm font-medium text-success">
                     <Trophy className="size-4" />
                     Personal best
                   </span>

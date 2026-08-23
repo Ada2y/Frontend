@@ -91,8 +91,28 @@ export function project(p: Point, t: Transform): Point {
   return {x: p.x * t.scale + t.offsetX, y: p.y * t.scale + t.offsetY};
 }
 
+/** Which side of the body a bone belongs to. In a side view the left and
+ * right limbs overlap, so drawing them in one colour turns a legible pose
+ * into a tangle. */
+export function boneSide(a: string, b: string): 'left' | 'right' | 'centre' {
+  const aLeft = a.startsWith('left');
+  const bLeft = b.startsWith('left');
+  const aRight = a.startsWith('right');
+  const bRight = b.startsWith('right');
+  // The pelvis and shoulder lines span the body and belong to neither side;
+  // colouring them as a limb would imply a laterality they don't have.
+  if ((aLeft && bRight) || (aRight && bLeft)) return 'centre';
+  if (aLeft || bLeft) return 'left';
+  if (aRight || bRight) return 'right';
+  return 'centre';
+}
+
 export interface DrawPoseOptions {
   color: string;
+  /** Optional per-side colours. Falls back to `color` when omitted, which is
+   * what the target-pose ghost wants - it is one object, not two limbs. */
+  leftColor?: string;
+  rightColor?: string;
   /** Joints to emphasise (the ones a check actually judged). */
   highlight?: Set<string>;
   highlightColor?: string;
@@ -116,6 +136,8 @@ export function drawPose(
 ): void {
   const {
     color,
+    leftColor,
+    rightColor,
     highlight,
     highlightColor = color,
     lineWidth = 4,
@@ -123,6 +145,13 @@ export function drawPose(
     alpha = 1,
     dashed = false
   } = opts;
+
+  const sideColor = (a: string, b: string) => {
+    const side = boneSide(a, b);
+    if (side === 'left') return leftColor ?? color;
+    if (side === 'right') return rightColor ?? color;
+    return color;
+  };
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -138,7 +167,7 @@ export function drawPose(
     const qa = project(pa, t);
     const qb = project(pb, t);
     ctx.beginPath();
-    ctx.strokeStyle = isHot ? highlightColor : color;
+    ctx.strokeStyle = isHot ? highlightColor : sideColor(a, b);
     ctx.lineWidth = isHot ? lineWidth + 1.5 : lineWidth;
     ctx.moveTo(qa.x, qa.y);
     ctx.lineTo(qb.x, qb.y);
@@ -150,7 +179,7 @@ export function drawPose(
     const q = project(p, t);
     const isHot = !!highlight && highlight.has(name);
     ctx.beginPath();
-    ctx.fillStyle = isHot ? highlightColor : color;
+    ctx.fillStyle = isHot ? highlightColor : sideColor(name, name);
     ctx.arc(q.x, q.y, isHot ? jointRadius + 2.5 : jointRadius, 0, Math.PI * 2);
     ctx.fill();
   }

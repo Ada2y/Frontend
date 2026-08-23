@@ -4,6 +4,7 @@ import {useEffect, useState} from 'react';
 import Link from 'next/link';
 import {
   Activity,
+  AlertCircle,
   Apple,
   CheckCircle2,
   Dumbbell,
@@ -20,6 +21,8 @@ import StreakCard from '@/app/(dashboard)/_components/StreakCard';
 import {useAuth} from '@/lib/auth-context';
 import {
   ApiClient,
+  FOOTBALL_EXERCISES,
+  GYM_EXERCISES,
   type NutritionRecommendation,
   type Readiness,
   type ReadinessVerdict,
@@ -33,28 +36,36 @@ function formatDate(iso: string): string {
 }
 
 const BAND_STYLES: Record<string, {label: string; ring: string; text: string}> = {
-  low: {label: 'Low', ring: 'ring-green-500/25', text: 'text-green-600'},
-  moderate: {label: 'Moderate', ring: 'ring-amber-500/25', text: 'text-amber-600'},
-  elevated: {label: 'Elevated', ring: 'ring-red-500/25', text: 'text-red-600'}
+  low: {label: 'Low', ring: 'ring-success/25', text: 'text-success'},
+  moderate: {label: 'Moderate', ring: 'ring-warning/25', text: 'text-warning'},
+  elevated: {label: 'Elevated', ring: 'ring-danger/25', text: 'text-danger'}
 };
 
 const VERDICT_STYLES: Record<
   ReadinessVerdict,
-  {label: string; ring: string; text: string; icon: typeof CheckCircle2}
+  {label: string; ring: string; text: string; dot: string; icon: typeof CheckCircle2}
 > = {
   train: {
     label: 'Train',
-    ring: 'ring-green-500/25',
-    text: 'text-green-600',
+    ring: 'ring-success/25',
+    text: 'text-success',
+    dot: 'bg-success',
     icon: CheckCircle2
   },
   modify: {
     label: 'Modify',
-    ring: 'ring-amber-500/25',
-    text: 'text-amber-600',
+    ring: 'ring-warning/25',
+    text: 'text-warning',
+    dot: 'bg-warning',
     icon: SlidersHorizontal
   },
-  rest: {label: 'Rest', ring: 'ring-red-500/25', text: 'text-red-600', icon: Moon}
+  rest: {
+    label: 'Rest',
+    ring: 'ring-danger/25',
+    text: 'text-danger',
+    dot: 'bg-danger',
+    icon: Moon
+  }
 };
 
 /** The one primary element on this page, and the question an athlete actually
@@ -116,7 +127,7 @@ function ReadinessHero({
             >
               <span className="text-xs text-muted-foreground">Risk screening</span>
               <span className="font-mono text-2xl leading-none font-semibold tabular-nums text-foreground">
-                {risk.score}
+                {Math.round(risk.score ?? 0)}
               </span>
               <span className={`text-xs font-medium ${band.text}`}>{band.label}</span>
             </Link>
@@ -128,7 +139,7 @@ function ReadinessHero({
             {rest.map((reason) => (
               <li key={reason.key} className="flex items-start gap-2 text-sm">
                 <span
-                  className={`mt-1.5 size-1.5 shrink-0 rounded-full ${VERDICT_STYLES[reason.verdict].text.replace('text-', 'bg-')}`}
+                  className={`mt-1.5 size-1.5 shrink-0 rounded-full ${VERDICT_STYLES[reason.verdict].dot}`}
                 />
                 <span className="text-muted-foreground">{reason.text}</span>
               </li>
@@ -148,6 +159,28 @@ function ReadinessHero({
         <p className="text-xs text-muted-foreground">{readiness.disclaimer}</p>
       </CardContent>
     </Card>
+  );
+}
+
+const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
+
+function exerciseLabel(exercise: string | null): string | null {
+  if (!exercise) return null;
+  return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
+}
+
+/** A filename and a date told the athlete nothing about how the session went. */
+function VideoOutcomeDot({video}: {video: VideoListItem}) {
+  if (video.status !== 'completed') {
+    return <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />;
+  }
+  if (video.assessable === false) {
+    return <AlertCircle className="size-3 shrink-0 text-danger" />;
+  }
+  return (video.failed ?? 0) > 0 ? (
+    <span className="size-1.5 shrink-0 rounded-full bg-warning" />
+  ) : (
+    <span className="size-1.5 shrink-0 rounded-full bg-success" />
   );
 }
 
@@ -232,7 +265,9 @@ function AthleteOverview() {
             {plan ? (
               <div className="flex flex-col gap-1">
                 <p className="text-sm text-foreground">{plan.title}</p>
-                <p className="text-xs text-muted-foreground capitalize">{plan.status}</p>
+                <p className="text-xs text-muted-foreground">
+                  {plan.exercises?.length ?? 0} exercises this week
+                </p>
                 <Link
                   href="/dashboard/training-plan"
                   className="mt-2 text-xs font-medium text-primary underline"
@@ -265,6 +300,11 @@ function AthleteOverview() {
             {nutrition ? (
               <div className="flex flex-col gap-2">
                 <NutritionStatusBadge status={nutrition.status} />
+                {nutrition.recommendation_en && (
+                  <p className="line-clamp-3 text-sm text-muted-foreground">
+                    {nutrition.recommendation_en}
+                  </p>
+                )}
                 <Link
                   href="/dashboard/nutrition"
                   className="text-xs font-medium text-primary underline"
@@ -307,8 +347,11 @@ function AthleteOverview() {
                   }
                   className="flex items-center justify-between gap-2 text-xs hover:text-primary"
                 >
-                  <span className="truncate text-foreground">
-                    {v.original_filename ?? 'Untitled video'}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <VideoOutcomeDot video={v} />
+                    <span className="truncate text-foreground">
+                      {exerciseLabel(v.exercise) ?? v.original_filename ?? 'Untitled video'}
+                    </span>
                   </span>
                   <span className="shrink-0 text-muted-foreground">{formatDate(v.created_at)}</span>
                 </Link>
@@ -360,7 +403,7 @@ export default function DashboardOverviewPage() {
         <h1 className="text-xl font-semibold text-foreground">Overview</h1>
         <p className="text-sm text-muted-foreground">
           {user?.role === 'athlete'
-            ? 'Your latest training plan and nutrition status.'
+            ? 'Your readiness, consistency and latest sessions at a glance.'
             : 'Welcome back.'}
         </p>
       </div>

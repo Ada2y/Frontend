@@ -103,7 +103,7 @@ export default function NutritionPage() {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {generating && !recommendation && (
         <p className="text-sm text-muted-foreground">
@@ -123,7 +123,7 @@ export default function NutritionPage() {
         />
       ) : (
         recommendation && (
-          <div className="max-w-xl">
+          <div className="max-w-3xl">
             <NutritionCard rec={recommendation} />
           </div>
         )

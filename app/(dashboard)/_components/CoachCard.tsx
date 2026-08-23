@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect, useRef, useState} from 'react';
-import {Loader2, Minus, MessageCircle, Send, TrendingDown, TrendingUp} from 'lucide-react';
+import {Equal, Loader2, MessageCircle, Send, TrendingDown, TrendingUp} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
@@ -19,16 +19,18 @@ const SUMMARY_POLL_INTERVAL_MS = 4000;
 // than poll forever if that background task ever fails silently.
 const SUMMARY_POLL_MAX_ATTEMPTS = 15;
 
+// Equal, not Minus: a dash next to "172° → 144.3°" reads as a negative sign
+// rather than as "no meaningful change".
 const DIRECTION_ICON: Record<TrendDirection, typeof TrendingUp> = {
   improving: TrendingUp,
   regressing: TrendingDown,
-  stable: Minus,
-  neutral: Minus
+  stable: Equal,
+  neutral: Equal
 };
 
 const DIRECTION_COLOR: Record<TrendDirection, string> = {
-  improving: 'text-green-600',
-  regressing: 'text-red-600',
+  improving: 'text-success',
+  regressing: 'text-danger',
   stable: 'text-muted-foreground',
   neutral: 'text-muted-foreground'
 };
@@ -202,12 +204,12 @@ export default function CoachCard({videoId}: {videoId: string}) {
           </div>
         </form>
 
-        {askError && <p className="text-xs text-red-600">{askError}</p>}
+        {askError && <p className="text-xs text-danger">{askError}</p>}
 
         {answer && (
           <div className="rounded-lg border border-border p-3">
             {!answer.in_scope && (
-              <p className="mb-1 text-[11px] font-medium text-amber-600">
+              <p className="mb-1 text-[11px] font-medium text-warning">
                 Out of scope for this coach
               </p>
             )}

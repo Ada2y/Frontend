@@ -213,7 +213,7 @@ export default function ProfilePage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600">
+        <div className="flex items-center gap-2 text-sm text-danger">
           <AlertCircle className="size-4 shrink-0" />
           {error}
         </div>
@@ -301,7 +301,7 @@ export default function ProfilePage() {
               Save
             </Button>
             {saved && (
-              <span className="flex items-center gap-1 text-xs text-green-600">
+              <span className="flex items-center gap-1 text-xs text-success">
                 <Check className="size-3.5" />
                 Saved
               </span>

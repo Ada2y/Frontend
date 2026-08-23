@@ -17,14 +17,14 @@ import {ApiClient, type RiskAssessment, type RiskFactor} from '@/lib/api';
 import {cn} from '@/lib/utils';
 
 const BAND = {
-  low: {label: 'Low', text: 'text-green-600', ring: 'ring-green-500/25', bar: 'bg-green-500'},
+  low: {label: 'Low', text: 'text-success', ring: 'ring-success/25', bar: 'bg-green-500'},
   moderate: {
     label: 'Moderate',
-    text: 'text-amber-600',
-    ring: 'ring-amber-500/25',
+    text: 'text-warning',
+    ring: 'ring-warning/25',
     bar: 'bg-amber-500'
   },
-  elevated: {label: 'Elevated', text: 'text-red-600', ring: 'ring-red-500/25', bar: 'bg-red-500'}
+  elevated: {label: 'Elevated', text: 'text-danger', ring: 'ring-danger/25', bar: 'bg-red-500'}
 } as const;
 
 /** Icon per factor family, so the list scans without reading every label. */
@@ -82,7 +82,7 @@ function FactorRow({factor, max}: {factor: RiskFactor; max: number}) {
           <div className="flex items-center justify-between gap-3">
             <span className="truncate text-sm text-foreground">{factor.label}</span>
             <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-              +{factor.points}
+              +{Math.round(factor.points)}
             </span>
           </div>
           <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -158,7 +158,7 @@ export default function InjuryRiskPage() {
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-danger">{error}</p>
       </div>
     );
   }
@@ -197,7 +197,7 @@ export default function InjuryRiskPage() {
               </span>
               <div className="flex items-baseline gap-3">
                 <span className="font-mono text-6xl leading-none font-semibold tabular-nums text-foreground">
-                  <CountUp value={risk.score ?? 0} />
+                  <CountUp value={Math.round(risk.score ?? 0)} />
                 </span>
                 <span className={cn('text-xl font-medium', band.text)}>{band.label}</span>
               </div>

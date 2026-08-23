@@ -2,7 +2,15 @@
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
-import {AlertCircle, CheckCircle, Upload, Video, X} from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  CheckCircle2,
+  Upload,
+  Video,
+  X
+} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
@@ -33,11 +41,11 @@ const EXERCISE_OPTIONS_BY_SPORT: Record<
 };
 
 const STATUS_COLORS: Record<VideoStatus, {bg: string; text: string}> = {
-  uploaded: {bg: 'bg-blue-500/10', text: 'text-blue-600'},
+  uploaded: {bg: 'bg-info-bg', text: 'text-info'},
   queued: {bg: 'bg-muted', text: 'text-muted-foreground'},
-  processing: {bg: 'bg-amber-500/10', text: 'text-amber-600'},
-  completed: {bg: 'bg-green-500/10', text: 'text-green-600'},
-  failed: {bg: 'bg-red-500/10', text: 'text-red-600'}
+  processing: {bg: 'bg-warning-bg', text: 'text-warning'},
+  completed: {bg: 'bg-success-bg', text: 'text-success'},
+  failed: {bg: 'bg-danger-bg', text: 'text-danger'}
 };
 
 const PENDING_STATUSES: VideoStatus[] = ['uploaded', 'queued', 'processing'];
@@ -69,9 +77,26 @@ function StatusBadge({video}: {video: VideoListItem}) {
 
   if (needsRetry) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
+      <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">
         <AlertCircle className="size-3" />
         Retry needed
+      </span>
+    );
+  }
+
+  // "Completed" in green sat next to a headline describing a fault on every
+  // rep. The badge means the job finished; the athlete read it as a verdict.
+  if (video.status === 'completed') {
+    const failed = video.failed ?? 0;
+    return failed > 0 ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning">
+        <AlertTriangle className="size-3" />
+        {failed} to work on
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
+        <CheckCircle2 className="size-3" />
+        Good form
       </span>
     );
   }
@@ -328,14 +353,14 @@ export default function VideosPage() {
               )}
 
               {uploadError && (
-                <div className="flex items-center gap-2 text-sm text-red-600">
+                <div className="flex items-center gap-2 text-sm text-danger">
                   <AlertCircle className="size-4 shrink-0" />
                   {uploadError}
                 </div>
               )}
 
               {uploadComplete && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
+                <div className="flex items-center gap-2 text-sm text-success">
                   <CheckCircle className="size-4" />
                   Upload complete — queued for analysis
                 </div>
@@ -378,11 +403,9 @@ export default function VideosPage() {
                 {v.headline && v.status === 'completed' && v.assessable !== false && (
                   <p className="mt-2 text-xs text-foreground">{v.headline}</p>
                 )}
-                {v.failure_reason && (
-                  <p className="mt-2 text-xs text-red-600">{v.failure_reason}</p>
-                )}
+                {v.failure_reason && <p className="mt-2 text-xs text-danger">{v.failure_reason}</p>}
                 {v.status === 'completed' && v.assessable === false && (
-                  <p className="mt-2 text-xs text-red-600">
+                  <p className="mt-2 text-xs text-danger">
                     {v.headline ?? "We couldn't measure this video."} Re-record and upload again.
                   </p>
                 )}

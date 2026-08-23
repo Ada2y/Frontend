@@ -11,6 +11,7 @@ import {describe, expect, it, vi} from 'vitest';
 
 import {
   COCO_SKELETON,
+  boneSide,
   boundsOf,
   drawFloor,
   drawHead,
@@ -324,5 +325,61 @@ describe('drawFloor', () => {
     const {ctx, lines} = fakeContext();
     drawFloor(ctx, [[null, null]], [0, 1], IDENTITY, 500, '#888');
     expect(lines).toHaveLength(0);
+  });
+});
+
+// --- left/right distinction ------------------------------------------------
+
+describe('per-side colouring', () => {
+  it('draws left and right limbs in different colours', () => {
+    // In a side view the limbs overlap; one colour turns a readable pose into
+    // a tangle of crossing lines.
+    const {ctx, lines} = fakeContext();
+    drawPose(ctx, UPRIGHT, IDENTITY, {
+      color: '#fff',
+      leftColor: '#0af',
+      rightColor: '#fa0'
+    });
+
+    expect(lines.some((l) => l.color === '#0af')).toBe(true);
+    expect(lines.some((l) => l.color === '#fa0')).toBe(true);
+  });
+
+  it('puts a bone spanning the body in the neutral colour', () => {
+    // shoulder-to-shoulder and hip-to-hip belong to neither side.
+    const {ctx, lines} = fakeContext();
+    drawPose(ctx, UPRIGHT, IDENTITY, {color: '#fff', leftColor: '#0af', rightColor: '#fa0'});
+
+    expect(lines.some((l) => l.color === '#fff')).toBe(true);
+  });
+
+  it('falls back to one colour when no sides are given', () => {
+    // The target-pose ghost is one object, not two limbs.
+    const {ctx, lines} = fakeContext();
+    drawPose(ctx, UPRIGHT, IDENTITY, {color: '#0af'});
+
+    expect(lines.every((l) => l.color === '#0af')).toBe(true);
+  });
+
+  it('classifies bones by side', () => {
+    expect(boneSide('left_hip', 'left_knee')).toBe('left');
+    expect(boneSide('right_knee', 'right_ankle')).toBe('right');
+    // spans the body - the pelvis line belongs to neither side
+    expect(boneSide('left_hip', 'right_hip')).toBe('centre');
+    expect(boneSide('left_shoulder', 'right_shoulder')).toBe('centre');
+    expect(boneSide('nose', 'nose')).toBe('centre');
+  });
+
+  it('still lets a failing check override the side colours', () => {
+    const {ctx, lines} = fakeContext();
+    drawPose(ctx, UPRIGHT, IDENTITY, {
+      color: '#fff',
+      leftColor: '#0af',
+      rightColor: '#fa0',
+      highlight: new Set(['left_knee']),
+      highlightColor: '#f00'
+    });
+
+    expect(lines.some((l) => l.color === '#f00')).toBe(true);
   });
 });

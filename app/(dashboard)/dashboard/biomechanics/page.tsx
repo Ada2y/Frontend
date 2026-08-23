@@ -51,7 +51,7 @@ function SessionList() {
     );
   }
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (error) return <p className="text-sm text-danger">{error}</p>;
 
   if (videos.length === 0) {
     return (
@@ -71,10 +71,10 @@ function SessionList() {
         const unassessable = v.assessable === false;
         const hasFailures = (v.failed ?? 0) > 0;
         const badge = unassessable
-          ? {label: 'Retry needed', className: 'bg-red-500/10 text-red-600'}
+          ? {label: 'Retry needed', className: 'bg-danger-bg text-danger'}
           : hasFailures
-            ? {label: 'Needs work', className: 'bg-amber-500/10 text-amber-600'}
-            : {label: 'Good form', className: 'bg-green-500/10 text-green-600'};
+            ? {label: 'Needs work', className: 'bg-warning-bg text-warning'}
+            : {label: 'Good form', className: 'bg-success-bg text-success'};
 
         return (
           <Link key={v.id} href={`/dashboard/biomechanics/${v.id}`}>

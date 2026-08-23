@@ -1,6 +1,11 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* The inline script in layout.tsx always resolves the theme to an explicit
+   data-theme on <html>, so there is no unstamped state to handle here and
+   both the tokens below and every `dark:` utility key off one attribute. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -69,6 +74,19 @@
   --chart-3: #22c55e;
   --chart-4: #f59e0b;
   --chart-5: #62666d;
+
+  /* Semantic outcome colours. Separate from --primary on purpose: pass/fail
+     is information, the brand indigo is interaction, and mixing them makes a
+     green button read as a passed check. */
+  --success: #16a34a;
+  --success-bg: color-mix(in srgb, #16a34a 10%, transparent);
+  --warning: #d97706;
+  --warning-bg: color-mix(in srgb, #d97706 10%, transparent);
+  --danger: #dc2626;
+  --danger-bg: color-mix(in srgb, #dc2626 10%, transparent);
+  --info: #2563eb;
+  --info-bg: color-mix(in srgb, #2563eb 10%, transparent);
+
   --radius: 8px;
   --sidebar: #0f1011;
   --sidebar-foreground: #ffffff;
@@ -98,6 +116,14 @@
 }
 
 @theme inline {
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
   --color-illustration: var(--illustration);
   --color-border-illustration: var(--border-illustration);
   --aspect-4/5: 4 / 5;
@@ -111,6 +137,63 @@
 :root {
   --illustration: #ffffff;
   --border-illustration: #e2e4e7;
+}
+
+/* Dark palette. Only the token values change - no component styles live in
+   here, so nothing can end up defined for one theme and missing in the other.
+   The indigo lifts from #5e6ad2 to #8fa4ff because the darker shade loses too
+   much contrast against a dark ground. */
+:root[data-theme='dark'] {
+  --background: #0d0e10;
+  --foreground: #f2f3f5;
+  --card: #16181b;
+  --card-foreground: #f2f3f5;
+  --popover: #16181b;
+  --popover-foreground: #f2f3f5;
+  --primary: #8fa4ff;
+  --primary-foreground: #0d0e10;
+  --secondary: #1c1f23;
+  --secondary-foreground: #f2f3f5;
+  --muted: #1c1f23;
+  --muted-foreground: #9ba1a9;
+  --accent: #8fa4ff;
+  --accent-foreground: #0d0e10;
+  --destructive: #f87171;
+  --border: #2a2d32;
+  --input: #16181b;
+  --ring: #8fa4ff;
+  --chart-1: #8fa4ff;
+  --chart-2: #5e6ad2;
+  --chart-3: #4ade80;
+  --chart-4: #fbbf24;
+  --chart-5: #9ba1a9;
+
+  /* Lifted for contrast on a dark ground - the 600-weight shades used in
+     light mode drop below 4.5:1 against #0d0e10. */
+  --success: #4ade80;
+  --success-bg: color-mix(in srgb, #4ade80 14%, transparent);
+  --warning: #fbbf24;
+  --warning-bg: color-mix(in srgb, #fbbf24 14%, transparent);
+  --danger: #f87171;
+  --danger-bg: color-mix(in srgb, #f87171 14%, transparent);
+  --info: #7dd3fc;
+  --info-bg: color-mix(in srgb, #7dd3fc 14%, transparent);
+
+  /* The sidebar is a dark panel in both themes; on a dark page it has to sit
+     slightly ABOVE the background or the app loses its structure. */
+  --sidebar: #131518;
+  --sidebar-foreground: #f2f3f5;
+  --sidebar-primary: #8fa4ff;
+  --sidebar-primary-foreground: #0d0e10;
+  --sidebar-accent: #23262b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2a2d32;
+  --sidebar-ring: #8fa4ff;
+
+  --illustration: #16181b;
+  --border-illustration: #2a2d32;
+
+  color-scheme: dark;
 }
 
 @utility mask-x-from-45 {
@@ -151,9 +234,31 @@
   clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 5rem 100%, 0% calc(100% - 5rem));
 }
 
+/* Keyboard focus was invisible app-wide. The `outline-none` utility is on
+   dozens of controls, and utilities beat the base layer regardless of
+   specificity - so this lives in the utilities layer and doubles the
+   pseudo-class to outrank a single class. :focus-visible, not :focus, so a
+   mouse click doesn't leave a ring behind on every button. */
+@layer utilities {
+  :focus-visible:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
   .active-scale-98:active {
     scale: 0.98;

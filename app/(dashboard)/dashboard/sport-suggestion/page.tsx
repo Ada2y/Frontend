@@ -93,7 +93,7 @@ export default function SportSuggestionPage() {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
@@ -113,12 +113,12 @@ export default function SportSuggestionPage() {
            in a 2-col grid, so repeated generates stacked identical cards
            forever. */
         <div className="flex flex-col gap-4">
-          <div className="max-w-xl">
+          <div className="max-w-3xl">
             <SuggestionCard suggestion={suggestions[0]} />
           </div>
 
           {suggestions.length > 1 && (
-            <div className="max-w-xl">
+            <div className="max-w-3xl">
               <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Earlier suggestions
               </p>

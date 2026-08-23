@@ -122,7 +122,7 @@ export default function ForgotPasswordPage() {
                     </div>
                   )}
                   {success && !error && (
-                    <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
+                    <div className="rounded-md bg-success-bg px-3 py-2 text-sm text-success dark:text-green-400">
                       {success}
                     </div>
                   )}
