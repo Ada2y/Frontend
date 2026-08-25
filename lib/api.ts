@@ -858,9 +858,13 @@ export class ApiClient {
     return request<RiskAssessment>('/athletes/me/injury-risk');
   }
 
-  /** "Should I train today?" - works with no wearable connected. */
+  /** "Should I train today?" - works with no wearable connected. Sends the
+   * browser timezone: consecutive training days are a question about the
+   * athlete's local calendar, not the server's. */
   static getReadiness() {
-    return request<Readiness>('/athletes/me/readiness');
+    const tz =
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+    return request<Readiness>(`/athletes/me/readiness${tz ? `?tz=${encodeURIComponent(tz)}` : ''}`);
   }
 
   /** This session vs previous vs personal best, for one exercise. */
