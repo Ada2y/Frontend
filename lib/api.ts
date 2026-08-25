@@ -316,6 +316,31 @@ export interface VideoStatusOut {
 export type CheckOutcome = 'pass' | 'fail' | 'not_assessable';
 export type CheckSeverity = 'info' | 'warn' | 'risk';
 
+export interface EvidenceClaim {
+  direction: 'supports' | 'contradicts';
+  finding: string;
+}
+
+/** What a check set is allowed to claim, and the state of the literature
+ * behind it. Served from the rules YAML, where it used to be a comment
+ * nobody outside the repo could see. */
+export interface Evidence {
+  claim_level: string;
+  headline: string;
+  detail: string;
+  calibration: string | null;
+  literature: EvidenceClaim[];
+  limitations: string[];
+}
+
+export interface TrackingQuality {
+  reliable: boolean;
+  bone_length_cv: number | null;
+  shape_ratio: number | null;
+  discontinuity_rate: number | null;
+  reasons: string[];
+}
+
 export interface CheckResult {
   check_id: string;
   /** Human-readable check name, e.g. "excessive torso lean". */
@@ -435,6 +460,11 @@ export interface AnalysisReport {
     category: string;
     view: {expected: string | null; measured: string | null; ratio: number | null};
     flags: string[];
+    /** Why nothing was measured, when nothing was measured. "wrong_view" and
+     * "unreliable_tracking" call for different re-record advice. */
+    skip_reason: string | null;
+    tracking: TrackingQuality | null;
+    evidence: Evidence | null;
   };
   segmentation: {mode: string; count: number};
   summary: {

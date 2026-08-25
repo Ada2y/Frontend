@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/accordion';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
 import CorrectionCanvas from '@/app/(dashboard)/_components/CorrectionCanvas';
+import EvidenceNote from '@/app/(dashboard)/_components/EvidenceNote';
 import SkeletonPlayer from '@/app/(dashboard)/_components/SkeletonPlayer';
 import {cn} from '@/lib/utils';
 import {
@@ -453,6 +454,8 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           )}
         </CardContent>
       </Card>
+
+      <EvidenceNote evidence={report.input.evidence} />
 
       <CoachCard videoId={videoId} />
 
