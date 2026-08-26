@@ -93,7 +93,7 @@ export default function SportSuggestionPage() {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
@@ -108,10 +108,37 @@ export default function SportSuggestionPage() {
           />
         )
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {suggestions.map((s) => (
-            <SuggestionCard key={s.id} suggestion={s} />
-          ))}
+        /* Latest is the hero; earlier ones collapse into a compact history
+           list. Previously every suggestion rendered as an equal-weight card
+           in a 2-col grid, so repeated generates stacked identical cards
+           forever. */
+        <div className="flex flex-col gap-4">
+          <div className="max-w-3xl">
+            <SuggestionCard suggestion={suggestions[0]} />
+          </div>
+
+          {suggestions.length > 1 && (
+            <div className="max-w-3xl">
+              <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Earlier suggestions
+              </p>
+              <ul className="flex flex-col divide-y divide-border rounded-lg ring-1 ring-foreground/10">
+                {suggestions.slice(1).map((older) => (
+                  <li
+                    key={older.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                  >
+                    <span className="capitalize text-foreground">
+                      {older.recommended_sport ?? 'No suggestion'}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {formatDate(older.measured_at)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

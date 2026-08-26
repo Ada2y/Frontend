@@ -7,7 +7,6 @@ import {Button} from '@/components/ui/button';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
 import NutritionStatusBadge from '@/app/(dashboard)/_components/NutritionStatusBadge';
 import {ApiClient, type NutritionRecommendation} from '@/lib/api';
-import {LAST_NUTRITION_ID_KEY} from '@/lib/last-generated';
 
 function NutritionCard({rec}: {rec: NutritionRecommendation}) {
   const isPending = rec.status === 'pending_review';
@@ -45,20 +44,22 @@ function NutritionCard({rec}: {rec: NutritionRecommendation}) {
 
 export default function NutritionPage() {
   const [recommendation, setRecommendation] = useState<NutritionRecommendation | null>(null);
-  const [loading, setLoading] = useState(
-    () => typeof window !== 'undefined' && !!localStorage.getItem(LAST_NUTRITION_ID_KEY)
-  );
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Server-side source of truth. Previously this read an id out of
+  // localStorage, so your recommendation vanished on logout or in another
+  // browser and the only way back was to Generate again.
   useEffect(() => {
-    const savedId =
-      typeof window !== 'undefined' ? localStorage.getItem(LAST_NUTRITION_ID_KEY) : null;
-    if (!savedId) return;
-    ApiClient.getNutrition(savedId)
-      .then(setRecommendation)
-      .catch(() => localStorage.removeItem(LAST_NUTRITION_ID_KEY))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    ApiClient.getCurrentNutrition()
+      .then((rec) => !cancelled && setRecommendation(rec))
+      .catch(() => {})
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleGenerate() {
@@ -67,7 +68,6 @@ export default function NutritionPage() {
     try {
       const rec = await ApiClient.generateNutrition();
       setRecommendation(rec);
-      localStorage.setItem(LAST_NUTRITION_ID_KEY, rec.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate a recommendation.');
     } finally {
@@ -84,13 +84,26 @@ export default function NutritionPage() {
             Clinically aware nutrition advice based on your training load and medical conditions.
           </p>
         </div>
-        <Button onClick={handleGenerate} disabled={generating}>
+        <Button
+          variant={recommendation ? 'ghost' : 'default'}
+          size={recommendation ? 'sm' : 'default'}
+          onClick={() => {
+            if (
+              recommendation &&
+              !window.confirm('This replaces your current recommendation. Continue?')
+            ) {
+              return;
+            }
+            handleGenerate();
+          }}
+          disabled={generating}
+        >
           {generating && <Loader2 className="size-3.5 animate-spin" />}
-          {recommendation ? 'Regenerate' : 'Generate recommendation'}
+          {recommendation ? 'Regenerate' : 'Create my plan'}
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {generating && !recommendation && (
         <p className="text-sm text-muted-foreground">
@@ -110,7 +123,7 @@ export default function NutritionPage() {
         />
       ) : (
         recommendation && (
-          <div className="max-w-xl">
+          <div className="max-w-3xl">
             <NutritionCard rec={recommendation} />
           </div>
         )

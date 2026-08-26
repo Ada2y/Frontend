@@ -2,7 +2,15 @@
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
-import {AlertCircle, CheckCircle, Upload, Video, X} from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  CheckCircle2,
+  Upload,
+  Video,
+  X
+} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
@@ -17,7 +25,7 @@ import {
 
 // Site-standard form-control style (matches CreateTeamSheet's inputClassName).
 const selectClassName =
-  'flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full';
+  'flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full appearance-none bg-[length:1rem] bg-[right_0.6rem_center] bg-no-repeat pr-9 bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2362666d%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E")]';
 
 const SPORT_OPTIONS: {value: VideoSport; label: string}[] = [
   {value: 'gym', label: 'Gym'},
@@ -33,11 +41,11 @@ const EXERCISE_OPTIONS_BY_SPORT: Record<
 };
 
 const STATUS_COLORS: Record<VideoStatus, {bg: string; text: string}> = {
-  uploaded: {bg: 'bg-blue-500/10', text: 'text-blue-600'},
+  uploaded: {bg: 'bg-info-bg', text: 'text-info'},
   queued: {bg: 'bg-muted', text: 'text-muted-foreground'},
-  processing: {bg: 'bg-amber-500/10', text: 'text-amber-600'},
-  completed: {bg: 'bg-green-500/10', text: 'text-green-600'},
-  failed: {bg: 'bg-red-500/10', text: 'text-red-600'}
+  processing: {bg: 'bg-warning-bg', text: 'text-warning'},
+  completed: {bg: 'bg-success-bg', text: 'text-success'},
+  failed: {bg: 'bg-danger-bg', text: 'text-danger'}
 };
 
 const PENDING_STATUSES: VideoStatus[] = ['uploaded', 'queued', 'processing'];
@@ -61,13 +69,44 @@ function formatExercise(exercise: VideoExercise | null): string | null {
   return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
 }
 
-function StatusBadge({status}: {status: VideoStatus}) {
-  const colors = STATUS_COLORS[status];
+/** A video that finished processing but measured nothing (0 reps, wrong
+ * camera angle) is NOT a success. Showing it green as "completed" told the
+ * athlete everything was fine and gave them no reason to re-record. */
+function StatusBadge({video}: {video: VideoListItem}) {
+  const needsRetry = video.status === 'completed' && video.assessable === false;
+
+  if (needsRetry) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">
+        <AlertCircle className="size-3" />
+        Retry needed
+      </span>
+    );
+  }
+
+  // "Completed" in green sat next to a headline describing a fault on every
+  // rep. The badge means the job finished; the athlete read it as a verdict.
+  if (video.status === 'completed') {
+    const failed = video.failed ?? 0;
+    return failed > 0 ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning">
+        <AlertTriangle className="size-3" />
+        {failed} to work on
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
+        <CheckCircle2 className="size-3" />
+        Good form
+      </span>
+    );
+  }
+
+  const colors = STATUS_COLORS[video.status];
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${colors.bg} ${colors.text}`}
     >
-      {status}
+      {video.status}
     </span>
   );
 }
@@ -314,14 +353,14 @@ export default function VideosPage() {
               )}
 
               {uploadError && (
-                <div className="flex items-center gap-2 text-sm text-red-600">
+                <div className="flex items-center gap-2 text-sm text-danger">
                   <AlertCircle className="size-4 shrink-0" />
                   {uploadError}
                 </div>
               )}
 
               {uploadComplete && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
+                <div className="flex items-center gap-2 text-sm text-success">
                   <CheckCircle className="size-4" />
                   Upload complete — queued for analysis
                 </div>
@@ -351,7 +390,7 @@ export default function VideosPage() {
                   <CardTitle className="text-sm truncate">
                     {v.original_filename ?? 'Untitled video'}
                   </CardTitle>
-                  <StatusBadge status={v.status} />
+                  <StatusBadge video={v} />
                 </div>
               </CardHeader>
               <CardContent>
@@ -361,11 +400,14 @@ export default function VideosPage() {
                   <span>{formatDuration(v.duration_seconds)}</span>
                   <span>{formatDate(v.created_at)}</span>
                 </div>
-                {v.headline && v.status === 'completed' && (
+                {v.headline && v.status === 'completed' && v.assessable !== false && (
                   <p className="mt-2 text-xs text-foreground">{v.headline}</p>
                 )}
-                {v.failure_reason && (
-                  <p className="mt-2 text-xs text-red-600">{v.failure_reason}</p>
+                {v.failure_reason && <p className="mt-2 text-xs text-danger">{v.failure_reason}</p>}
+                {v.status === 'completed' && v.assessable === false && (
+                  <p className="mt-2 text-xs text-danger">
+                    {v.headline ?? "We couldn't measure this video."} Re-record and upload again.
+                  </p>
                 )}
                 {v.status === 'completed' && (
                   <Link

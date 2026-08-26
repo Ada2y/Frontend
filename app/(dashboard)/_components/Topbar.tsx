@@ -10,6 +10,7 @@ import {useAuth} from '@/lib/auth-context';
 import {Button} from '@/components/ui/button';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import NotificationBell from './NotificationBell';
+import ThemeToggle from './ThemeToggle';
 
 export default function Topbar() {
   const [open, setOpen] = useState(false);
@@ -26,7 +27,12 @@ export default function Topbar() {
         Ada2y
       </Link>
       <div className="hidden text-sm font-medium text-foreground lg:block">
-        {navItems.find((item) => item.href === pathname)?.label ?? 'Dashboard'}
+        {/* Longest matching prefix, so a detail route like
+            /dashboard/biomechanics/<id> says "Biomechanics" rather than
+            falling through to the generic "Dashboard". */}
+        {navItems
+          .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+          .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? 'Dashboard'}
       </div>
       <div className="flex items-center gap-1">
         {user && (
@@ -51,6 +57,7 @@ export default function Topbar() {
           </TooltipTrigger>
           <TooltipContent>Home</TooltipContent>
         </Tooltip>
+        <ThemeToggle />
         <NotificationBell />
         <Button
           variant="ghost"

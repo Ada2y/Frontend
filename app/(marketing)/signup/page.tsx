@@ -147,7 +147,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               {registered ? (
                 <div className="space-y-4">
-                  <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
+                  <div className="rounded-md bg-success-bg px-3 py-2 text-sm text-success dark:text-green-400">
                     Check your email ({registeredEmail}) for a verification link.
                   </div>
                   <button

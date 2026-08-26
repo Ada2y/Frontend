@@ -2,7 +2,16 @@
 
 import {use, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
-import {AlertTriangle, ArrowLeft, CheckCircle, HelpCircle, Info, Loader2} from 'lucide-react';
+import Image from 'next/image';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
+  Download,
+  HelpCircle,
+  Info,
+  Loader2
+} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
@@ -12,6 +21,9 @@ import {
   AccordionContent
 } from '@/components/ui/accordion';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
+import CorrectionCanvas from '@/app/(dashboard)/_components/CorrectionCanvas';
+import EvidenceNote from '@/app/(dashboard)/_components/EvidenceNote';
+import SkeletonPlayer from '@/app/(dashboard)/_components/SkeletonPlayer';
 import {cn} from '@/lib/utils';
 import {
   ApiClient,
@@ -21,6 +33,7 @@ import {
   type AnalysisReport,
   type CheckResult,
   type CheckSeverity,
+  type RepBlock,
   type VideoStatus
 } from '@/lib/api';
 
@@ -29,9 +42,9 @@ const POLL_INTERVAL_MS = 4000;
 const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
 
 const SEVERITY_STYLES: Record<CheckSeverity, {bg: string; text: string}> = {
-  info: {bg: 'bg-blue-500/10', text: 'text-blue-600'},
-  warn: {bg: 'bg-amber-500/10', text: 'text-amber-600'},
-  risk: {bg: 'bg-red-500/10', text: 'text-red-600'}
+  info: {bg: 'bg-info-bg', text: 'text-info'},
+  warn: {bg: 'bg-warning-bg', text: 'text-warning'},
+  risk: {bg: 'bg-danger-bg', text: 'text-danger'}
 };
 
 function exerciseLabel(exercise: string | null): string {
@@ -55,8 +68,8 @@ function SeverityChip({severity}: {severity: CheckSeverity}) {
 }
 
 function OutcomeIcon({outcome}: {outcome: CheckResult['outcome']}) {
-  if (outcome === 'pass') return <CheckCircle className="size-4 shrink-0 text-green-600" />;
-  if (outcome === 'fail') return <AlertTriangle className="size-4 shrink-0 text-red-600" />;
+  if (outcome === 'pass') return <CheckCircle className="size-4 shrink-0 text-success" />;
+  if (outcome === 'fail') return <AlertTriangle className="size-4 shrink-0 text-danger" />;
   return <HelpCircle className="size-4 shrink-0 text-muted-foreground" />;
 }
 
@@ -91,13 +104,51 @@ function EvidenceImage({videoId, filename}: {videoId: string; filename: string})
       </div>
     );
   }
-  // eslint-disable-next-line @next/next/no-img-element -- blob: URL, next/image can't optimize it
+
   return (
-    <img
+    // unoptimized because the source is a blob: URL created in this browser
+    // from an authenticated fetch - the optimizer runs server-side and cannot
+    // reach it. Everything else next/image gives us (layout stability from
+    // the explicit intrinsic size, lazy loading, decoding) still applies.
+    <Image
       src={src}
       alt="Evidence frame"
-      className="w-full max-w-sm rounded-lg border border-border"
+      width={640}
+      height={480}
+      unoptimized
+      sizes="(max-width: 640px) 100vw, 384px"
+      className="h-auto w-full max-w-sm rounded-lg border border-border"
     />
+  );
+}
+
+function DownloadPdfButton({videoId}: {videoId: string}) {
+  const [state, setState] = useState<'idle' | 'working' | 'error'>('idle');
+
+  async function handleDownload() {
+    setState('working');
+    try {
+      await ApiClient.downloadReportPdf(videoId);
+      setState('idle');
+    } catch {
+      setState('error');
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={state === 'working'}>
+        {state === 'working' ? (
+          <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+        ) : (
+          <Download className="mr-1.5 size-3.5" />
+        )}
+        Share as PDF
+      </Button>
+      {state === 'error' && (
+        <span className="text-xs text-danger">Couldn&apos;t generate the PDF.</span>
+      )}
+    </div>
   );
 }
 
@@ -107,35 +158,77 @@ function CheckRow({videoId, check}: {videoId: string; check: CheckResult}) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <OutcomeIcon outcome={check.outcome} />
-          <span className="text-sm font-medium capitalize text-foreground">
-            {check.check_id.replace(/_/g, ' ')}
+          <span className="text-base font-medium text-foreground first-letter:uppercase">
+            {check.label ?? check.check_id.replace(/_/g, ' ')}
           </span>
         </div>
-        <SeverityChip severity={check.severity} />
+        {check.outcome === 'fail' && <SeverityChip severity={check.severity} />}
       </div>
-      {check.value != null && check.threshold != null && (
-        <p className="text-xs font-mono text-muted-foreground">
-          measured {check.value} (target {check.op} {check.threshold})
-        </p>
+
+      {/* Coaching first. The raw measurement lives in Technical details. */}
+      <p className="text-sm leading-relaxed text-foreground">
+        {check.plain ?? check.message ?? ''}
+      </p>
+
+      {/* Prefer the vector comparison: the baked overlay is unreadable
+          whenever the source footage is busy. The JPEG stays as the fallback
+          for reports generated before correction_pose existed. */}
+      {check.correction_pose ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <CorrectionCanvas correction={check.correction_pose} />
+          {check.evidence_image && (
+            <figure className="flex flex-col gap-1">
+              <figcaption className="text-xs font-medium text-muted-foreground">
+                The frame this came from
+              </figcaption>
+              <EvidenceImage videoId={videoId} filename={check.evidence_image} />
+            </figure>
+          )}
+        </div>
+      ) : check.correction_image ? (
+        <div className="flex flex-col gap-1.5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {check.evidence_image && (
+              <figure className="flex flex-col gap-1">
+                <figcaption className="text-xs font-medium text-muted-foreground">
+                  Your rep
+                </figcaption>
+                <EvidenceImage videoId={videoId} filename={check.evidence_image} />
+              </figure>
+            )}
+            <figure className="flex flex-col gap-1">
+              <figcaption className="text-xs font-medium text-muted-foreground">
+                With the correction
+              </figcaption>
+              <EvidenceImage videoId={videoId} filename={check.correction_image} />
+            </figure>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The cyan outline is an illustrative guide generated from your own frame, not an exact
+            biomechanical prescription.
+          </p>
+        </div>
+      ) : (
+        check.evidence_image && <EvidenceImage videoId={videoId} filename={check.evidence_image} />
       )}
-      {check.outcome === 'not_assessable' && (
-        <p className="text-xs text-muted-foreground">Not enough visibility to assess this check.</p>
-      )}
-      {check.message && <p className="text-sm text-foreground">{check.message}</p>}
-      {check.evidence_image && <EvidenceImage videoId={videoId} filename={check.evidence_image} />}
     </div>
   );
 }
 
-function MetricsTable({metrics}: {metrics: Record<string, number>}) {
-  const entries = Object.entries(metrics);
+function MetricsTable({rep}: {rep: RepBlock}) {
+  const entries =
+    rep.labelled_metrics ??
+    Object.entries(rep.metrics).map(([key, value]) => ({key, label: key, unit: null, value}));
   if (entries.length === 0) return null;
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-      {entries.map(([name, value]) => (
-        <div key={name} className="flex items-center justify-between gap-2 text-muted-foreground">
-          <span className="truncate">{name.replace(/_/g, ' ')}</span>
-          <span className="font-mono tabular-nums text-foreground">{value}</span>
+    <div className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+      {entries.map((m) => (
+        <div key={m.key} className="flex items-center justify-between gap-2 text-muted-foreground">
+          <span className="truncate">{m.label}</span>
+          <span className="font-mono tabular-nums text-foreground">
+            {m.value}
+            {m.unit ?? ''}
+          </span>
         </div>
       ))}
     </div>
@@ -208,7 +301,7 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         {backLink}
         <div>
           <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-danger">{error}</p>
         </div>
       </div>
     );
@@ -253,18 +346,21 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         {backLink}
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
-          <p className="text-sm text-muted-foreground">
-            {exerciseLabel(report.exercise)} · {new Date(report.created_at).toLocaleDateString()}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
+            <p className="text-sm text-muted-foreground">
+              {exerciseLabel(report.exercise)} · {new Date(report.created_at).toLocaleDateString()}
+            </p>
+          </div>
+          <DownloadPdfButton videoId={videoId} />
         </div>
       </div>
 
       {isWrongView && (
-        <Card className="border-amber-500/40">
+        <Card className="border-warning/40">
           <CardContent className="flex items-start gap-3 py-4">
-            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
             <div>
               <p className="text-sm font-medium text-foreground">
                 We couldn&apos;t assess this video
@@ -275,10 +371,54 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </Card>
       )}
 
+      {/* Hero: what to actually do. Counts and geometry are secondary. */}
+      {report.coaching && summary.assessable !== false && (
+        <Card className="p-8">
+          <CardContent className="flex flex-col gap-5 px-0">
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Focus on next
+              </span>
+              <p className="text-2xl leading-snug font-medium text-foreground">
+                {report.coaching.next_session_cue}
+              </p>
+            </div>
+
+            {report.coaching.focus_on.length > 0 && (
+              <ul className="flex flex-col gap-2">
+                {report.coaching.focus_on.map((f) => (
+                  <li key={f.check_id} className="flex items-start gap-2 text-sm">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+                    <span className="text-foreground">
+                      <span className="first-letter:uppercase">{f.label}</span>
+                      <span className="text-muted-foreground">
+                        {' '}
+                        - {f.reps_affected} of {f.of_reps} reps
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {report.coaching.what_went_well.length > 0 && (
+              <ul className="flex flex-col gap-2 border-t border-border pt-4">
+                {report.coaching.what_went_well.map((line) => (
+                  <li key={line} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="mt-0.5 size-4 shrink-0 text-success" />
+                    <span className="text-foreground first-letter:uppercase">{line}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Summary</CardTitle>
+            <CardTitle className="text-base">Session summary</CardTitle>
             <span className="text-xs text-muted-foreground">
               View: {report.input.view.measured ?? 'unknown'} (expected {report.input.view.expected}
               )
@@ -286,10 +426,19 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p className="text-sm leading-relaxed text-foreground">{summary.headline}</p>
+          {/* The headline used to be repeated here from the hero above, so the
+              two cards said the same sentence back to back. */}
+          {report.technique_score != null && (
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-4xl font-semibold tabular-nums text-foreground">
+                {report.technique_score}
+              </span>
+              <span className="text-sm text-muted-foreground">/ 100 technique score</span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-4 text-sm">
-            <span className="text-green-600">{summary.passed} passed</span>
-            <span className="text-red-600">{summary.failed} failed</span>
+            <span className="text-success">{summary.passed} passed</span>
+            <span className="text-danger">{summary.failed} failed</span>
             <span className="text-muted-foreground">{summary.not_assessable} not assessable</span>
             <span className="text-muted-foreground">{report.segmentation.count} reps detected</span>
           </div>
@@ -306,8 +455,38 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </CardContent>
       </Card>
 
+      <EvidenceNote evidence={report.input.evidence} />
+
       <CoachCard videoId={videoId} />
 
+      {/* Renders itself away when the analysis has no stored pose frames. */}
+      <SkeletonPlayer videoId={videoId} />
+
+      {formGif && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Correct form reference</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-start gap-2">
+              {/* unoptimized: the optimizer would rasterise an animated GIF
+                  to a single still frame, and the animation is the content. */}
+              <Image
+                src={formGif}
+                alt={`${exerciseLabel(report.exercise)} correct form`}
+                width={480}
+                height={480}
+                unoptimized
+                sizes="(max-width: 640px) 100vw, 384px"
+                className="h-auto w-full max-w-sm rounded-lg border border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                Follow this motion as your reference while you work through the reps below.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {report.reps.length > 0 && (
         <Card>
           <CardHeader>
@@ -320,13 +499,25 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
                 return (
                   <AccordionItem key={rep.index} value={`rep-${rep.index}`}>
                     <AccordionTrigger>
-                      <span className="flex items-center gap-2">
-                        Rep {rep.index + 1}
+                      {/* Every row used to be an identical warning triangle,
+                          so seven failing reps looked the same as one. Naming
+                          the failed checks makes the list scannable without
+                          opening anything. */}
+                      <span className="flex flex-wrap items-center gap-2">
                         {repFailed ? (
-                          <AlertTriangle className="size-3.5 text-red-600" />
+                          <AlertTriangle className="size-3.5 shrink-0 text-danger" />
                         ) : (
-                          <CheckCircle className="size-3.5 text-green-600" />
+                          <CheckCircle className="size-3.5 shrink-0 text-success" />
                         )}
+                        <span className="font-medium">Rep {rep.index + 1}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {repFailed
+                            ? rep.checks
+                                .filter((c) => c.outcome === 'fail')
+                                .map((c) => c.label ?? c.check_id.replace(/_/g, ' '))
+                                .join(', ')
+                            : 'all checks passed'}
+                        </span>
                       </span>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -334,12 +525,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
                         {rep.checks.map((check) => (
                           <CheckRow key={check.check_id} videoId={videoId} check={check} />
                         ))}
-                        <div>
-                          <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                            Metrics
-                          </p>
-                          <MetricsTable metrics={rep.metrics} />
-                        </div>
+                        <details className="rounded-lg border border-border p-3">
+                          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                            Technical details
+                          </summary>
+                          <div className="mt-2">
+                            <MetricsTable rep={rep} />
+                          </div>
+                        </details>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -361,27 +554,6 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           minute: '2-digit'
         })}
       </div>
-
-      {formGif && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Correct form reference</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-start gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element -- gif is a static asset */}
-              <img
-                src={formGif}
-                alt={`${exerciseLabel(report.exercise)} correct form`}
-                className="w-full max-w-sm rounded-lg border border-border"
-              />
-              <p className="text-xs text-muted-foreground">
-                Follow this motion as your reference while reviewing your rep breakdown above.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
