@@ -77,9 +77,7 @@ export function RepBreakdownChart({report}: {report: AnalysisReport}) {
             <Tooltip content={<CustomTooltip />} />
             <Legend
               wrapperStyle={{fontSize: 12, paddingTop: 8}}
-              formatter={(value) => (
-                <span className="text-muted-foreground">{value}</span>
-              )}
+              formatter={(value) => <span className="text-muted-foreground">{value}</span>}
             />
             <Bar
               dataKey="passed"
@@ -123,11 +121,7 @@ export function PassFailPieChart({report}: {report: AnalysisReport}) {
 
   if (data.length === 0) {
     return (
-      <ChartCard
-        title="Check distribution"
-        subtitle="Overall outcomes"
-        accentColor={COLORS.green}
-      >
+      <ChartCard title="Check distribution" subtitle="Overall outcomes" accentColor={COLORS.green}>
         <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
           No checks to display
         </div>
@@ -136,11 +130,7 @@ export function PassFailPieChart({report}: {report: AnalysisReport}) {
   }
 
   return (
-    <ChartCard
-      title="Check distribution"
-      subtitle="Overall outcomes"
-      accentColor={COLORS.green}
-    >
+    <ChartCard title="Check distribution" subtitle="Overall outcomes" accentColor={COLORS.green}>
       <div className="flex h-64 items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -177,9 +167,7 @@ export function PassFailPieChart({report}: {report: AnalysisReport}) {
             />
             <Legend
               wrapperStyle={{fontSize: 12, paddingTop: 4}}
-              formatter={(value) => (
-                <span className="text-muted-foreground">{value}</span>
-              )}
+              formatter={(value) => <span className="text-muted-foreground">{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>

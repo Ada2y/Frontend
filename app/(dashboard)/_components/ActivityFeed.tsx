@@ -37,7 +37,7 @@ function videoToActivity(v: VideoListItem): ActivityItem {
       : 'text-muted-foreground',
     title: v.original_filename ?? 'Untitled video',
     detail: isCompleted
-      ? `${v.exercise ?? v.sport} \u00b7 ${v.passed ?? 0}/${((v.passed ?? 0) + (v.failed ?? 0))} passed`
+      ? `${v.exercise ?? v.sport} \u00b7 ${v.passed ?? 0}/${(v.passed ?? 0) + (v.failed ?? 0)} passed`
       : v.status,
     href: isCompleted ? `/dashboard/biomechanics/${v.id}` : '/dashboard/videos',
     timestamp: v.created_at
@@ -52,9 +52,7 @@ export default function ActivityFeed({videos}: ActivityFeedProps) {
   const items = videos.slice(0, 6).map(videoToActivity);
 
   if (items.length === 0) {
-    return (
-      <p className="py-8 text-center text-base text-muted-foreground">No activity yet.</p>
-    );
+    return <p className="py-8 text-center text-base text-muted-foreground">No activity yet.</p>;
   }
 
   return (

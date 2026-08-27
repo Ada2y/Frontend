@@ -1,7 +1,21 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import {AlertCircle, Calendar, Check, CheckCircle, Dumbbell, Loader2, Plus, Ruler, ShieldAlert, Tag, User, Weight, X} from 'lucide-react';
+import {
+  AlertCircle,
+  Calendar,
+  Check,
+  CheckCircle,
+  Dumbbell,
+  Loader2,
+  Plus,
+  Ruler,
+  ShieldAlert,
+  Tag,
+  User,
+  Weight,
+  X
+} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
@@ -52,7 +66,10 @@ function ProfileSkeleton() {
         <div className="h-5 w-72 animate-pulse rounded bg-muted [animation-delay:100ms]" />
       </div>
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <div
+          key={i}
+          className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10"
+        >
           <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
           <div className="flex flex-col gap-4">
             <div className="h-5 w-36 animate-pulse rounded bg-muted" />
@@ -546,11 +563,7 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-3">
                       <div
                         className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                          isHigh
-                            ? 'bg-red-500/15'
-                            : isModerate
-                              ? 'bg-amber-500/15'
-                              : 'bg-muted'
+                          isHigh ? 'bg-red-500/15' : isModerate ? 'bg-amber-500/15' : 'bg-muted'
                         }`}
                       >
                         <ShieldAlert

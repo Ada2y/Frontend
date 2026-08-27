@@ -30,9 +30,7 @@ function sessionsPerWeekData(videos: VideoListItem[]) {
   for (const v of completed) {
     const d = new Date(v.created_at);
     const now = new Date();
-    const weekNum = Math.floor(
-      (now.getTime() - d.getTime()) / (7 * 24 * 60 * 60 * 1000)
-    );
+    const weekNum = Math.floor((now.getTime() - d.getTime()) / (7 * 24 * 60 * 60 * 1000));
     if (weekNum < 0 || weekNum >= 12) continue;
     const label = weekNum === 0 ? 'This week' : weekNum === 1 ? '1w ago' : `${weekNum}w ago`;
     const key = `w${weekNum}`;
@@ -206,24 +204,24 @@ export function BodyMetricsChart({metrics}: {metrics: BodyMetricEntry[]}) {
   }
 
   return (
-    <ChartCard
-      title="Body metrics"
-      subtitle="Weight and BMI over time"
-      accentColor={COLORS.green}
-    >
+    <ChartCard title="Body metrics" subtitle="Weight and BMI over time" accentColor={COLORS.green}>
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{top: 5, right: 5, bottom: 0, left: -20}}>
             <CartesianGrid {...gridStyle} vertical={false} />
             <XAxis dataKey="date" tick={axisStyle} tickLine={false} axisLine={false} />
             <YAxis yAxisId="weight" tick={axisStyle} tickLine={false} axisLine={false} />
-            <YAxis yAxisId="bmi" orientation="right" tick={axisStyle} tickLine={false} axisLine={false} />
+            <YAxis
+              yAxisId="bmi"
+              orientation="right"
+              tick={axisStyle}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip content={<CustomTooltip />} />
             <Legend
               wrapperStyle={{fontSize: 12, paddingTop: 8}}
-              formatter={(value) => (
-                <span className="text-muted-foreground">{value}</span>
-              )}
+              formatter={(value) => <span className="text-muted-foreground">{value}</span>}
             />
             <Line
               yAxisId="weight"

@@ -226,10 +226,7 @@ export default function OnboardingPage() {
           <p className="text-base text-muted-foreground">Complete your athlete profile.</p>
         </div>
         <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div
-            className="absolute inset-x-0 top-0 h-[3px]"
-            style={{background: '#22c55e'}}
-          />
+          <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: '#22c55e'}} />
           <div className="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-success-bg">
               <CheckCircle className="size-8 text-success" />
@@ -289,7 +286,11 @@ export default function OnboardingPage() {
               </div>
               <span
                 className={`text-sm font-medium ${
-                  isActive ? 'text-foreground' : isDone ? 'text-foreground' : 'text-muted-foreground'
+                  isActive
+                    ? 'text-foreground'
+                    : isDone
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
                 }`}
               >
                 {s.label}
@@ -302,10 +303,7 @@ export default function OnboardingPage() {
       {/* Progress bar */}
       <div className="flex gap-1.5">
         {Array.from({length: TOTAL_STEPS}, (_, i) => (
-          <div
-            key={i}
-            className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted"
-          >
+          <div key={i} className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
             {i < step && (
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
@@ -321,10 +319,7 @@ export default function OnboardingPage() {
 
       {/* Current step card */}
       <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-        <div
-          className="absolute inset-x-0 top-0 h-[3px]"
-          style={{background: meta.color}}
-        />
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: meta.color}} />
         <div className="p-6">
           <div className="flex items-center gap-3">
             <div
@@ -505,7 +500,9 @@ export default function OnboardingPage() {
                         {isSelected && (
                           <div className="ml-6 flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
                             {condition.risk_notes && (
-                              <p className="text-sm text-muted-foreground">{condition.risk_notes}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {condition.risk_notes}
+                              </p>
                             )}
                             <label className="flex flex-col gap-1.5">
                               <span className="text-sm font-medium text-muted-foreground">
@@ -524,7 +521,9 @@ export default function OnboardingPage() {
                               />
                             </label>
                             <label className="flex flex-col gap-1.5">
-                              <span className="text-sm font-medium text-muted-foreground">Notes</span>
+                              <span className="text-sm font-medium text-muted-foreground">
+                                Notes
+                              </span>
                               <textarea
                                 rows={2}
                                 value={
@@ -546,25 +545,20 @@ export default function OnboardingPage() {
               </>
             )}
 
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-sm text-danger">
-              <AlertCircle className="size-4 shrink-0" />
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-sm text-danger">
+                <AlertCircle className="size-4 shrink-0" />
+                {error}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
         {step > 1 ? (
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => setStep((s) => s - 1)}
-            disabled={saving}
-          >
+          <Button variant="ghost" size="lg" onClick={() => setStep((s) => s - 1)} disabled={saving}>
             <ArrowLeft className="mr-1 size-4" />
             Back
           </Button>

@@ -32,7 +32,10 @@ const COLORS = {
   red: '#ef4444'
 } as const;
 
-const SPORT_CONFIG: Record<string, {icon: typeof Dumbbell; color: string; label: string; description: string}> = {
+const SPORT_CONFIG: Record<
+  string,
+  {icon: typeof Dumbbell; color: string; label: string; description: string}
+> = {
   gym: {
     icon: Dumbbell,
     color: COLORS.blue,
@@ -90,7 +93,11 @@ function SkeletonCard() {
   );
 }
 
-function EmptySportSuggestion({hasMetrics, onGenerate, generating}: {
+function EmptySportSuggestion({
+  hasMetrics,
+  onGenerate,
+  generating
+}: {
   hasMetrics: boolean;
   onGenerate: () => void;
   generating: boolean;
@@ -108,8 +115,8 @@ function EmptySportSuggestion({hasMetrics, onGenerate, generating}: {
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-foreground">Discover your sport</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Our AI analyses your body metrics, injury history, and fitness level to suggest
-                a sport that suits you best. It&apos;s a fun recommendation, not a clinical verdict.
+                Our AI analyses your body metrics, injury history, and fitness level to suggest a
+                sport that suits you best. It&apos;s a fun recommendation, not a clinical verdict.
               </p>
               <div className="mt-4">
                 <Button size="lg" onClick={onGenerate} disabled={generating}>
@@ -180,7 +187,11 @@ function EmptySportSuggestion({hasMetrics, onGenerate, generating}: {
   );
 }
 
-function FeaturedCard({suggestion, bodyMetrics, injuries}: {
+function FeaturedCard({
+  suggestion,
+  bodyMetrics,
+  injuries
+}: {
   suggestion: BiometricProfile;
   bodyMetrics: BodyMetricEntry[];
   injuries: Injury[];
@@ -188,7 +199,8 @@ function FeaturedCard({suggestion, bodyMetrics, injuries}: {
   const sport = suggestion.recommended_sport ?? 'gym';
   const config = SPORT_CONFIG[sport] ?? SPORT_CONFIG.gym;
   const SportIcon = config.icon;
-  const confidence = suggestion.confidence_score != null ? Math.round(suggestion.confidence_score * 100) : null;
+  const confidence =
+    suggestion.confidence_score != null ? Math.round(suggestion.confidence_score * 100) : null;
   const latestMetric = bodyMetrics.length > 0 ? bodyMetrics[bodyMetrics.length - 1] : null;
   const activeInjuries = injuries.filter((i) => !i.recovered_at);
 
@@ -218,9 +230,7 @@ function FeaturedCard({suggestion, bodyMetrics, injuries}: {
             <h2 className="mt-2 text-2xl font-bold capitalize text-foreground">
               {suggestion.recommended_sport ?? 'No suggestion'}
             </h2>
-            <p className="mt-1 text-base text-muted-foreground">
-              {config.description}
-            </p>
+            <p className="mt-1 text-base text-muted-foreground">{config.description}</p>
 
             {/* Notes */}
             {suggestion.notes && (
@@ -256,7 +266,9 @@ function FeaturedCard({suggestion, bodyMetrics, injuries}: {
             <div className="relative shrink-0">
               <ProgressRing value={confidence} size={88} strokeWidth={7} color={config.color} />
               <span className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold leading-none text-foreground">{confidence}</span>
+                <span className="text-2xl font-bold leading-none text-foreground">
+                  {confidence}
+                </span>
                 <span className="text-[10px] font-medium text-muted-foreground">%</span>
               </span>
             </div>
@@ -271,7 +283,8 @@ function HistoryCard({suggestion, index}: {suggestion: BiometricProfile; index: 
   const sport = suggestion.recommended_sport ?? 'gym';
   const config = SPORT_CONFIG[sport] ?? SPORT_CONFIG.gym;
   const SportIcon = config.icon;
-  const confidence = suggestion.confidence_score != null ? Math.round(suggestion.confidence_score * 100) : null;
+  const confidence =
+    suggestion.confidence_score != null ? Math.round(suggestion.confidence_score * 100) : null;
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 hover:shadow-md hover:ring-foreground/20 transition-all duration-200">
@@ -355,7 +368,9 @@ function StatsRow({suggestions}: {suggestions: BiometricProfile[]}) {
               <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
                 Avg confidence
               </span>
-              <span className="text-4xl font-bold tracking-tight text-foreground">{avgConfidence}%</span>
+              <span className="text-4xl font-bold tracking-tight text-foreground">
+                {avgConfidence}%
+              </span>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-500">
               <TrendingUp className="size-6" />
@@ -364,34 +379,32 @@ function StatsRow({suggestions}: {suggestions: BiometricProfile[]}) {
         </div>
       )}
 
-      {topSport && (() => {
-        const TopIcon = SPORT_CONFIG[topSport[0]]?.icon ?? Medal;
-        const topColor = SPORT_CONFIG[topSport[0]]?.color ?? COLORS.blue;
-        return (
-          <div className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-            <div
-              className="absolute inset-x-0 top-0 h-[3px]"
-              style={{background: topColor}}
-            />
-            <div className="flex items-start justify-between">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                  Top pick
-                </span>
-                <span className="text-4xl font-bold tracking-tight capitalize text-foreground">
-                  {topSport[0]}
-                </span>
-              </div>
-              <div
-                className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-                style={{backgroundColor: `${topColor}10`, color: topColor}}
-              >
-                <TopIcon className="size-6" />
+      {topSport &&
+        (() => {
+          const TopIcon = SPORT_CONFIG[topSport[0]]?.icon ?? Medal;
+          const topColor = SPORT_CONFIG[topSport[0]]?.color ?? COLORS.blue;
+          return (
+            <div className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+              <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: topColor}} />
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                    Top pick
+                  </span>
+                  <span className="text-4xl font-bold tracking-tight capitalize text-foreground">
+                    {topSport[0]}
+                  </span>
+                </div>
+                <div
+                  className="flex size-12 shrink-0 items-center justify-center rounded-xl"
+                  style={{backgroundColor: `${topColor}10`, color: topColor}}
+                >
+                  <TopIcon className="size-6" />
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
     </div>
   );
 }

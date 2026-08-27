@@ -16,7 +16,12 @@ import {
   Loader2,
   TrendingUp
 } from 'lucide-react';
-import {Accordion, AccordionItem, AccordionTrigger, AccordionContent} from '@/components/ui/accordion';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent
+} from '@/components/ui/accordion';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
@@ -106,8 +111,7 @@ function EvidenceImage({videoId, filename}: {videoId: string; filename: string})
     };
   }, [videoId, filename]);
 
-  if (error)
-    return <p className="text-sm text-muted-foreground">Evidence image unavailable.</p>;
+  if (error) return <p className="text-sm text-muted-foreground">Evidence image unavailable.</p>;
   if (!src) {
     return (
       <div className="flex h-48 w-full max-w-sm items-center justify-center rounded-xl bg-muted">
@@ -249,7 +253,15 @@ function MetricsTable({rep}: {rep: RepBlock}) {
   );
 }
 
-function RepAccordion({videoId, rep, defaultOpen}: {videoId: string; rep: AnalysisReport['reps'][0]; defaultOpen?: boolean}) {
+function RepAccordion({
+  videoId,
+  rep,
+  defaultOpen
+}: {
+  videoId: string;
+  rep: AnalysisReport['reps'][0];
+  defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const repFailed = rep.checks.some((c) => c.outcome === 'fail');
   const repPassed = rep.checks.filter((c) => c.outcome === 'pass').length;
@@ -396,10 +408,7 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </div>
         {status !== 'failed' && (
           <div className="relative overflow-hidden rounded-xl bg-card p-6 ring-1 ring-foreground/10">
-            <div
-              className="absolute inset-x-0 top-0 h-[3px]"
-              style={{background: COLORS.amber}}
-            />
+            <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.amber}} />
             <div className="flex items-center gap-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
                 <Loader2 className="size-6 text-amber-500 animate-spin" />

@@ -1,7 +1,17 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import {AlertCircle, Calendar, Check, CheckCircle, Dumbbell, Loader2, Plus, Sparkles, Zap} from 'lucide-react';
+import {
+  AlertCircle,
+  Calendar,
+  Check,
+  CheckCircle,
+  Dumbbell,
+  Loader2,
+  Plus,
+  Sparkles,
+  Zap
+} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
@@ -128,8 +138,13 @@ function DayCard({
             {exercises.map((ex) => {
               const rest = formatRest(ex.rest_seconds);
               return (
-                <div key={ex.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5">
-                  <span className="text-base font-medium text-foreground">{ex.exercise.name_en}</span>
+                <div
+                  key={ex.id}
+                  className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5"
+                >
+                  <span className="text-base font-medium text-foreground">
+                    {ex.exercise.name_en}
+                  </span>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
                       {ex.sets ?? '-'}×{ex.reps ?? '-'}
@@ -166,7 +181,10 @@ function TrainingSkeleton() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+          <div
+            key={i}
+            className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10"
+          >
             <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
             <div className="flex flex-col gap-3">
               <div className="h-5 w-20 animate-pulse rounded bg-muted" />
@@ -182,7 +200,12 @@ function TrainingSkeleton() {
   );
 }
 
-function EmptyPlan({sport, onSportChange, onGenerate, generating}: {
+function EmptyPlan({
+  sport,
+  onSportChange,
+  onGenerate,
+  generating
+}: {
   sport: VideoSport;
   onSportChange: (s: VideoSport) => void;
   onGenerate: () => void;
@@ -354,9 +377,7 @@ export default function TrainingPlanPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Training Plan</h1>
-          <p className="text-base text-muted-foreground">
-            {plan.title}
-          </p>
+          <p className="text-base text-muted-foreground">{plan.title}</p>
         </div>
         <Button
           variant="ghost"
@@ -386,8 +407,12 @@ export default function TrainingPlanPage() {
           <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.primary}} />
           <div className="flex items-start justify-between">
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Exercises</span>
-              <span className="text-4xl font-bold tracking-tight text-foreground">{totalExercises}</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Exercises
+              </span>
+              <span className="text-4xl font-bold tracking-tight text-foreground">
+                {totalExercises}
+              </span>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Dumbbell className="size-6" />
@@ -398,7 +423,9 @@ export default function TrainingPlanPage() {
           <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.green}} />
           <div className="flex items-start justify-between">
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Total sets</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Total sets
+              </span>
               <span className="text-4xl font-bold tracking-tight text-foreground">{totalSets}</span>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-500">
@@ -410,8 +437,12 @@ export default function TrainingPlanPage() {
           <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.blue}} />
           <div className="flex items-start justify-between">
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Sessions logged</span>
-              <span className="text-4xl font-bold tracking-tight text-foreground">{logs.length}</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Sessions logged
+              </span>
+              <span className="text-4xl font-bold tracking-tight text-foreground">
+                {logs.length}
+              </span>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
               <Calendar className="size-6" />

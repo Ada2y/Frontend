@@ -45,13 +45,16 @@ const EXERCISE_OPTIONS_BY_SPORT: Record<
   football: FOOTBALL_EXERCISES
 };
 
-const STATUS_CONFIG: Record<VideoStatus, {
-  bg: string;
-  text: string;
-  accent: string;
-  icon: typeof CheckCircle;
-  label: string;
-}> = {
+const STATUS_CONFIG: Record<
+  VideoStatus,
+  {
+    bg: string;
+    text: string;
+    accent: string;
+    icon: typeof CheckCircle;
+    label: string;
+  }
+> = {
   uploaded: {
     bg: 'bg-info-bg',
     text: 'text-info',
@@ -177,7 +180,10 @@ function SkeletonPage() {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+          <div
+            key={i}
+            className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10"
+          >
             <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
             <div className="flex items-start justify-between">
               <div className="flex flex-col gap-2">
@@ -200,7 +206,10 @@ function SkeletonPage() {
         </div>
       </div>
       {[1, 2].map((i) => (
-        <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <div
+          key={i}
+          className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10"
+        >
           <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
           <div className="flex items-center gap-4">
             <div className="size-12 animate-pulse rounded-xl bg-muted" />
@@ -581,9 +590,7 @@ function VideoCard({video}: {video: VideoListItem}) {
         <div
           className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${config.bg}`}
         >
-          <StatusIcon
-            className={`size-6 ${config.text} ${isProcessing ? 'animate-spin' : ''}`}
-          />
+          <StatusIcon className={`size-6 ${config.text} ${isProcessing ? 'animate-spin' : ''}`} />
         </div>
 
         {/* Content */}

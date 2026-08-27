@@ -2,25 +2,13 @@
 
 import {useEffect, useState} from 'react';
 import Link from 'next/link';
-import {
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  Film,
-  TrendingUp,
-  Video
-} from 'lucide-react';
+import {Activity, AlertTriangle, CheckCircle, Film, TrendingUp, Video} from 'lucide-react';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
 import SessionComparison from '@/app/(dashboard)/_components/SessionComparison';
-import {
-  ApiClient,
-  FOOTBALL_EXERCISES,
-  GYM_EXERCISES,
-  type VideoListItem
-} from '@/lib/api';
+import {ApiClient, FOOTBALL_EXERCISES, GYM_EXERCISES, type VideoListItem} from '@/lib/api';
 
 const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
 
@@ -58,7 +46,10 @@ function SkeletonPage() {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+          <div
+            key={i}
+            className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10"
+          >
             <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
             <div className="flex items-start justify-between">
               <div className="flex flex-col gap-2">
@@ -71,7 +62,10 @@ function SkeletonPage() {
         ))}
       </div>
       {[1, 2, 3].map((i) => (
-        <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <div
+          key={i}
+          className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10"
+        >
           <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
           <div className="flex items-center gap-4">
             <div className="size-12 animate-pulse rounded-xl bg-muted" />
@@ -166,8 +160,7 @@ function StatsRow({videos}: {videos: VideoListItem[]}) {
 function ReportCard({video}: {video: VideoListItem}) {
   const hasFailures = (video.failed ?? 0) > 0;
   const totalChecks = (video.passed ?? 0) + (video.failed ?? 0);
-  const passRate =
-    totalChecks > 0 ? Math.round(((video.passed ?? 0) / totalChecks) * 100) : null;
+  const passRate = totalChecks > 0 ? Math.round(((video.passed ?? 0) / totalChecks) * 100) : null;
   const accentColor = hasFailures ? COLORS.amber : COLORS.green;
   const borderColor = hasFailures ? 'border-l-amber-500' : 'border-l-green-500';
 
@@ -182,9 +175,7 @@ function ReportCard({video}: {video: VideoListItem}) {
           <div
             className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${hasFailures ? 'bg-amber-500/10' : 'bg-green-500/10'}`}
           >
-            <Film
-              className={`size-6 ${hasFailures ? 'text-amber-500' : 'text-green-500'}`}
-            />
+            <Film className={`size-6 ${hasFailures ? 'text-amber-500' : 'text-green-500'}`} />
           </div>
 
           {/* Content */}
@@ -224,9 +215,7 @@ function ReportCard({video}: {video: VideoListItem}) {
             )}
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
-                hasFailures
-                  ? 'bg-amber-500/10 text-amber-600'
-                  : 'bg-green-500/10 text-green-600'
+                hasFailures ? 'bg-amber-500/10 text-amber-600' : 'bg-green-500/10 text-green-600'
               }`}
             >
               {hasFailures ? (

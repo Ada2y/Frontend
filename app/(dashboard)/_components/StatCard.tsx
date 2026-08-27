@@ -26,10 +26,7 @@ export default function StatCard({
       )}
     >
       {/* Top accent line */}
-      <div
-        className="absolute inset-x-0 top-0 h-[3px]"
-        style={{background: accentColor}}
-      />
+      <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: accentColor}} />
 
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1.5">
@@ -37,9 +34,7 @@ export default function StatCard({
             {label}
           </span>
           <span className="text-4xl font-bold tracking-tight text-foreground">{value}</span>
-          {description && (
-            <span className="mt-1 text-sm text-muted-foreground">{description}</span>
-          )}
+          {description && <span className="mt-1 text-sm text-muted-foreground">{description}</span>}
         </div>
         <div
           className="flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors duration-200"

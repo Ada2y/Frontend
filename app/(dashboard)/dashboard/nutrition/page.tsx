@@ -222,11 +222,7 @@ function HistorySection({items}: {items: NutritionRecommendation[]}) {
               >
                 <div
                   className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${
-                    isApproved
-                      ? 'bg-green-500/10'
-                      : isPending
-                        ? 'bg-amber-500/10'
-                        : 'bg-red-500/10'
+                    isApproved ? 'bg-green-500/10' : isPending ? 'bg-amber-500/10' : 'bg-red-500/10'
                   }`}
                 >
                   {isApproved ? (
@@ -277,7 +273,11 @@ function HistorySection({items}: {items: NutritionRecommendation[]}) {
   );
 }
 
-function ContextPanel({conditions, bodyMetrics, trainingPlan}: {
+function ContextPanel({
+  conditions,
+  bodyMetrics,
+  trainingPlan
+}: {
   conditions: AthleteMedicalCondition[];
   bodyMetrics: BodyMetricEntry[];
   trainingPlan: TrainingPlan | null;
@@ -292,10 +292,7 @@ function ContextPanel({conditions, bodyMetrics, trainingPlan}: {
     <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
       <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.primary}} />
       <div className="p-5">
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex w-full items-center gap-3"
-        >
+        <button onClick={() => setExpanded(!expanded)} className="flex w-full items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
             <FileText className="size-5 text-primary" />
           </div>
@@ -341,12 +338,18 @@ function ContextPanel({conditions, bodyMetrics, trainingPlan}: {
                 <div className="flex items-center gap-4">
                   {latestMetric.weight_kg != null && (
                     <span className="text-sm text-muted-foreground">
-                      Weight: <span className="font-medium text-foreground">{latestMetric.weight_kg} kg</span>
+                      Weight:{' '}
+                      <span className="font-medium text-foreground">
+                        {latestMetric.weight_kg} kg
+                      </span>
                     </span>
                   )}
                   {latestMetric.height_cm != null && (
                     <span className="text-sm text-muted-foreground">
-                      Height: <span className="font-medium text-foreground">{latestMetric.height_cm} cm</span>
+                      Height:{' '}
+                      <span className="font-medium text-foreground">
+                        {latestMetric.height_cm} cm
+                      </span>
                     </span>
                   )}
                   {latestMetric.bmi != null && (
@@ -368,9 +371,11 @@ function ContextPanel({conditions, bodyMetrics, trainingPlan}: {
                 <p className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{trainingPlan.title}</span>
                   {' · '}
-                  {trainingPlan.exercises.length} exercise{trainingPlan.exercises.length !== 1 ? 's' : ''}
+                  {trainingPlan.exercises.length} exercise
+                  {trainingPlan.exercises.length !== 1 ? 's' : ''}
                   {' across '}
-                  {new Set(trainingPlan.exercises.map((e) => e.day_of_week)).size} day{new Set(trainingPlan.exercises.map((e) => e.day_of_week)).size !== 1 ? 's' : ''}
+                  {new Set(trainingPlan.exercises.map((e) => e.day_of_week)).size} day
+                  {new Set(trainingPlan.exercises.map((e) => e.day_of_week)).size !== 1 ? 's' : ''}
                 </p>
               </div>
             )}
@@ -381,7 +386,15 @@ function ContextPanel({conditions, bodyMetrics, trainingPlan}: {
   );
 }
 
-function RecommendationView({rec, history, conditions, bodyMetrics, trainingPlan, onRegenerate, generating}: {
+function RecommendationView({
+  rec,
+  history,
+  conditions,
+  bodyMetrics,
+  trainingPlan,
+  onRegenerate,
+  generating
+}: {
   rec: NutritionRecommendation;
   history: NutritionRecommendation[];
   conditions: AthleteMedicalCondition[];
@@ -412,9 +425,13 @@ function RecommendationView({rec, history, conditions, bodyMetrics, trainingPlan
 
       {/* Status overview strip */}
       <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-        <div className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${STATUS_ACCENT[rec.status]}`} />
+        <div
+          className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${STATUS_ACCENT[rec.status]}`}
+        />
         <div className="flex items-center gap-4 p-5">
-          <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${STATUS_ICON_BG[rec.status]}`}>
+          <div
+            className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${STATUS_ICON_BG[rec.status]}`}
+          >
             {isApproved ? (
               <CheckCircle className={`size-6 ${STATUS_ICON_COLOR[rec.status]}`} />
             ) : isFlagged ? (
@@ -459,8 +476,8 @@ function RecommendationView({rec, history, conditions, bodyMetrics, trainingPlan
               {rec.status === 'flagged' ? 'Flagged for review' : 'Rejected'}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              This recommendation has been flagged by a reviewer. Please consult with your coach
-              or medical team before following this advice.
+              This recommendation has been flagged by a reviewer. Please consult with your coach or
+              medical team before following this advice.
             </p>
           </div>
         </div>
@@ -517,7 +534,8 @@ function RecommendationView({rec, history, conditions, bodyMetrics, trainingPlan
         {rec.considers_conditions && rec.considers_conditions.length > 0 && (
           <span className="flex items-center gap-1.5">
             <ShieldAlert className="size-4" />
-            Considers {rec.considers_conditions.length} medical condition{rec.considers_conditions.length > 1 ? 's' : ''}
+            Considers {rec.considers_conditions.length} medical condition
+            {rec.considers_conditions.length > 1 ? 's' : ''}
           </span>
         )}
         {rec.reviewed_at && (
@@ -591,7 +609,9 @@ export default function NutritionPage() {
       const rec = await ApiClient.generateNutrition();
       setRecommendation(rec);
       localStorage.setItem(LAST_NUTRITION_ID_KEY, rec.id);
-      ApiClient.listNutrition().then(setHistory).catch(() => {});
+      ApiClient.listNutrition()
+        .then(setHistory)
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate a recommendation.');
     } finally {

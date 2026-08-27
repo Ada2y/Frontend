@@ -22,19 +22,14 @@ export default function ChartCard({
         className
       )}
     >
-      <div
-        className="absolute inset-x-0 top-0 h-[3px]"
-        style={{background: accentColor}}
-      />
+      <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: accentColor}} />
       <div className="p-5">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
               {title}
             </span>
-            {subtitle && (
-              <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
-            )}
+            {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
         {children}

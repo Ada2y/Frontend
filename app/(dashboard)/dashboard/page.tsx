@@ -255,17 +255,27 @@ function AthleteOverview() {
       ApiClient.getReadiness().catch(() => null),
       ApiClient.listMyBodyMetrics().catch(() => []),
       ApiClient.listMyInjuries().catch(() => [])
-    ]).then(([videoList, planResult, nutritionResult, riskResult, readinessResult, metricsResult, injuriesResult]) => {
-      if (cancelled) return;
-      setVideos(videoList);
-      setPlan(planResult);
-      setNutrition(nutritionResult);
-      setRisk(riskResult);
-      setReadiness(readinessResult);
-      setBodyMetrics(metricsResult);
-      setInjuries(injuriesResult);
-      setLoading(false);
-    });
+    ]).then(
+      ([
+        videoList,
+        planResult,
+        nutritionResult,
+        riskResult,
+        readinessResult,
+        metricsResult,
+        injuriesResult
+      ]) => {
+        if (cancelled) return;
+        setVideos(videoList);
+        setPlan(planResult);
+        setNutrition(nutritionResult);
+        setRisk(riskResult);
+        setReadiness(readinessResult);
+        setBodyMetrics(metricsResult);
+        setInjuries(injuriesResult);
+        setLoading(false);
+      }
+    );
 
     return () => {
       cancelled = true;
@@ -282,9 +292,7 @@ function AthleteOverview() {
 
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const sessionsThisWeek = completedVideos.filter(
-    (v) => new Date(v.created_at) > weekAgo
-  ).length;
+  const sessionsThisWeek = completedVideos.filter((v) => new Date(v.created_at) > weekAgo).length;
 
   const recentVideos = videos.slice(0, 5);
 
@@ -344,10 +352,7 @@ function AthleteOverview() {
 
         {/* Form Score with ring */}
         <div className="group relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10 transition-all duration-200 hover:shadow-md hover:ring-foreground/20">
-          <div
-            className="absolute inset-x-0 top-0 h-[3px]"
-            style={{background: COLORS.primary}}
-          />
+          <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.primary}} />
           <div className="flex items-start justify-between">
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
@@ -413,7 +418,11 @@ function AthleteOverview() {
               icon={Ruler}
               label="Body metrics"
               value={summary}
-              description={latest ? `Recorded ${new Date(latest.recorded_at).toLocaleDateString()}` : 'No data yet'}
+              description={
+                latest
+                  ? `Recorded ${new Date(latest.recorded_at).toLocaleDateString()}`
+                  : 'No data yet'
+              }
               accentColor={COLORS.blue}
             />
           );
@@ -428,7 +437,7 @@ function AthleteOverview() {
           const value = count === 0 ? 'None' : `${count} active`;
           let description: string;
           if (count === 0) {
-            description = 'You\'re all clear';
+            description = "You're all clear";
           } else if (count === 1) {
             const inj = activeInjuries[0];
             description = `${inj.body_part} — ${inj.severity}`;
