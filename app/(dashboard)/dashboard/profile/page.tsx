@@ -1,8 +1,8 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import {AlertCircle, Check, Loader2, Plus} from 'lucide-react';
-import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
+import {AlertCircle, Calendar, Check, CheckCircle, Dumbbell, Loader2, Plus, Ruler, ShieldAlert, Tag, User, Weight, X} from 'lucide-react';
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {
   ApiClient,
@@ -23,9 +23,17 @@ const SPORTS: {value: VideoSport; label: string}[] = [
 const SEVERITIES: InjurySeverity[] = ['low', 'moderate', 'high', 'critical'];
 
 const inputClassName =
-  'h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/50';
+  'h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground outline-none focus:ring-2 focus:ring-ring/50';
 const selectClassName =
-  'flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50';
+  'flex h-10 min-w-0 rounded-lg bg-input px-3 py-1 text-base text-foreground shadow-sm outline-none ring-1 ring-foreground/10 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50';
+
+const COLORS = {
+  blue: '#3b82f6',
+  primary: '#5e6ad2',
+  green: '#22c55e',
+  amber: '#f59e0b',
+  red: '#ef4444'
+} as const;
 
 function formatDate(iso: string | null) {
   if (!iso) return '-';
@@ -34,6 +42,29 @@ function formatDate(iso: string | null) {
     month: 'short',
     day: 'numeric'
   });
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <div className="h-8 w-32 animate-pulse rounded bg-muted" />
+        <div className="h-5 w-72 animate-pulse rounded bg-muted [animation-delay:100ms]" />
+      </div>
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-muted" />
+          <div className="flex flex-col gap-4">
+            <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-10 animate-pulse rounded-lg bg-muted" />
+              <div className="h-10 animate-pulse rounded-lg bg-muted" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function ProfilePage() {
@@ -112,10 +143,6 @@ export default function ProfilePage() {
         fitness_level: fitnessLevel || null
       });
 
-      // Height/weight ARE body metrics - a profile edit that changes either
-      // one is itself a new measurement, so it belongs in the same
-      // append-only history the "Add entry" form below writes to, without
-      // making the athlete re-enter the same number twice.
       const heightChanged = height !== lastRecordedHeight && height !== '';
       const weightChanged = weight !== lastRecordedWeight && weight !== '';
       if (heightChanged || weightChanged) {
@@ -193,40 +220,47 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  if (loading) return <ProfileSkeleton />;
 
   const selectedCodes = new Set(myConditions.map((c) => c.condition.code));
+  const activeInjuries = injuries.filter((i) => !i.recovered_at);
+  const latestMetric = bodyMetrics.length > 0 ? bodyMetrics[bodyMetrics.length - 1] : null;
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Profile</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-semibold text-foreground">Profile</h1>
+        <p className="text-base text-muted-foreground">
           Your athlete profile, medical conditions, body metrics, and injuries.
         </p>
       </div>
 
+      {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600">
-          <AlertCircle className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/8 px-4 py-3 text-base text-red-600">
+          <AlertCircle className="size-5 shrink-0" />
           {error}
         </div>
       )}
 
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="text-base">Personal & physical</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 px-0">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* Personal & Physical */}
+      <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.primary}} />
+        <div className="p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <User className="size-6 text-primary" />
+            </div>
+            <div>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Personal & physical
+              </span>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Date of birth</span>
+              <span className="text-sm font-medium text-muted-foreground">Date of birth</span>
               <input
                 type="date"
                 value={dob}
@@ -235,7 +269,7 @@ export default function ProfilePage() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Gender</span>
+              <span className="text-sm font-medium text-muted-foreground">Gender</span>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as AthleteGender)}
@@ -247,7 +281,7 @@ export default function ProfilePage() {
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Height (cm)</span>
+              <span className="text-sm font-medium text-muted-foreground">Height (cm)</span>
               <input
                 type="number"
                 value={height}
@@ -256,7 +290,7 @@ export default function ProfilePage() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Weight (kg)</span>
+              <span className="text-sm font-medium text-muted-foreground">Weight (kg)</span>
               <input
                 type="number"
                 value={weight}
@@ -265,7 +299,7 @@ export default function ProfilePage() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Dominant sport</span>
+              <span className="text-sm font-medium text-muted-foreground">Dominant sport</span>
               <select
                 value={sport}
                 onChange={(e) => setSport(e.target.value as VideoSport)}
@@ -280,7 +314,7 @@ export default function ProfilePage() {
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Fitness level</span>
+              <span className="text-sm font-medium text-muted-foreground">Fitness level</span>
               <select
                 value={fitnessLevel}
                 onChange={(e) => setFitnessLevel(e.target.value)}
@@ -295,70 +329,145 @@ export default function ProfilePage() {
               </select>
             </label>
           </div>
-          <div className="flex items-center gap-3">
-            <Button size="sm" onClick={handleSaveProfile} disabled={saving}>
-              {saving && <Loader2 className="size-3.5 animate-spin" />}
-              Save
+          <div className="mt-5 flex items-center gap-3">
+            <Button size="lg" onClick={handleSaveProfile} disabled={saving}>
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              Save profile
             </Button>
             {saved && (
-              <span className="flex items-center gap-1 text-xs text-green-600">
-                <Check className="size-3.5" />
+              <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
+                <Check className="size-4" />
                 Saved
               </span>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="text-base">Medical conditions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 px-0">
-          {catalog.map((condition) => {
-            const isSelected = selectedCodes.has(condition.code);
-            return (
-              <label
-                key={condition.code}
-                className="flex items-center gap-2 text-sm text-foreground"
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => handleToggleCondition(condition.code, isSelected)}
-                  className="accent-primary"
-                />
-                {condition.name_en}
-              </label>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="text-base">Body metrics history</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 px-0">
-          {bodyMetrics.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No entries yet.</p>
-          ) : (
-            <ul className="flex flex-col gap-1.5">
-              {bodyMetrics.map((m) => (
-                <li key={m.id} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{formatDate(m.recorded_at)}</span>
-                  <span className="font-mono text-foreground tabular-nums">
-                    {m.height_cm != null && `${m.height_cm}cm `}
-                    {m.weight_kg != null && `${m.weight_kg}kg `}
-                    {m.bmi != null && `· BMI ${m.bmi}`}
-                  </span>
-                </li>
+      {/* Medical Conditions */}
+      <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.amber}} />
+        <div className="p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+              <Tag className="size-6 text-amber-600" />
+            </div>
+            <div>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Medical conditions
+              </span>
+            </div>
+          </div>
+          {myConditions.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {myConditions.map((c) => (
+                <span
+                  key={c.id}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-700"
+                >
+                  {c.condition.name_en}
+                  <button
+                    onClick={() => handleToggleCondition(c.condition.code, true)}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-amber-500/20"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
               ))}
-            </ul>
+            </div>
           )}
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Height (cm)</span>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {catalog
+              .filter((c) => !selectedCodes.has(c.code))
+              .map((condition, idx) => (
+                <button
+                  key={condition.id ?? `${condition.code}-${idx}`}
+                  onClick={() => handleToggleCondition(condition.code, false)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1 text-sm text-muted-foreground transition-colors hover:border-amber-500/50 hover:bg-amber-500/5 hover:text-amber-700"
+                >
+                  <Plus className="size-3" />
+                  {condition.name_en}
+                </button>
+              ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Body Metrics */}
+      <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.blue}} />
+        <div className="p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+              <Ruler className="size-6 text-blue-500" />
+            </div>
+            <div>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Body metrics
+              </span>
+            </div>
+          </div>
+
+          {/* Latest summary */}
+          {latestMetric && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center rounded-lg bg-blue-500/8 px-2 py-3">
+                <span className="text-xl font-bold text-blue-600">
+                  {latestMetric.weight_kg != null ? latestMetric.weight_kg : '\u2014'}
+                </span>
+                <span className="text-[11px] font-medium text-blue-500/70">kg</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-cyan-500/8 px-2 py-3">
+                <span className="text-xl font-bold text-cyan-600">
+                  {latestMetric.height_cm != null ? latestMetric.height_cm : '\u2014'}
+                </span>
+                <span className="text-[11px] font-medium text-cyan-500/70">cm</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-blue-500/8 px-2 py-3">
+                <span className="text-xl font-bold text-blue-600">
+                  {latestMetric.bmi != null ? latestMetric.bmi : '\u2014'}
+                </span>
+                <span className="text-[11px] font-medium text-blue-500/70">BMI</span>
+              </div>
+            </div>
+          )}
+
+          {/* History */}
+          {bodyMetrics.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-muted-foreground">History</p>
+              <div className="flex flex-col gap-1.5">
+                {bodyMetrics
+                  .slice()
+                  .reverse()
+                  .map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2"
+                    >
+                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Calendar className="size-3.5" />
+                        {formatDate(m.recorded_at)}
+                      </span>
+                      <span className="font-mono text-sm tabular-nums text-foreground">
+                        {m.height_cm != null && `${m.height_cm}cm `}
+                        {m.weight_kg != null && `${m.weight_kg}kg `}
+                        {m.bmi != null && `/ BMI ${m.bmi}`}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {bodyMetrics.length === 0 && (
+            <p className="mt-4 text-sm text-muted-foreground">No entries yet.</p>
+          )}
+
+          {/* Add entry */}
+          <div className="mt-4 flex items-end gap-2">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-sm font-medium text-muted-foreground">Height (cm)</span>
               <input
                 type="number"
                 value={newHeight}
@@ -366,8 +475,8 @@ export default function ProfilePage() {
                 className={inputClassName}
               />
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Weight (kg)</span>
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-sm font-medium text-muted-foreground">Weight (kg)</span>
               <input
                 type="number"
                 value={newWeight}
@@ -375,44 +484,145 @@ export default function ProfilePage() {
                 className={inputClassName}
               />
             </label>
-            <Button size="sm" variant="outline" onClick={handleAddBodyMetric}>
-              <Plus className="size-3.5" />
-              Add entry
+            <Button size="lg" variant="outline" onClick={handleAddBodyMetric}>
+              <Plus className="size-4" />
+              Add
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="p-8">
-        <CardHeader className="px-0">
-          <CardTitle className="text-base">Injuries</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 px-0">
-          {injuries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No injuries logged.</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {injuries.map((inj) => (
-                <li key={inj.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-foreground capitalize">
-                    {inj.body_part} <span className="text-muted-foreground">({inj.severity})</span>
-                  </span>
-                  {inj.recovered_at ? (
-                    <span className="text-xs text-muted-foreground">
-                      Recovered {formatDate(inj.recovered_at)}
-                    </span>
-                  ) : (
-                    <Button size="sm" variant="ghost" onClick={() => handleMarkRecovered(inj.id)}>
-                      Mark recovered
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
+      {/* Injuries */}
+      <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <div
+          className={`absolute inset-x-0 top-0 h-[3px] ${
+            activeInjuries.length > 0
+              ? 'bg-gradient-to-r from-red-500 via-amber-400 to-red-500'
+              : 'bg-gradient-to-r from-green-500 via-emerald-400 to-green-500'
+          }`}
+        />
+        <div className="p-5">
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${
+                activeInjuries.length > 0 ? 'bg-red-500/10' : 'bg-green-500/10'
+              }`}
+            >
+              {activeInjuries.length > 0 ? (
+                <ShieldAlert className="size-6 text-red-500" />
+              ) : (
+                <CheckCircle className="size-6 text-green-500" />
+              )}
+            </div>
+            <div>
+              <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Injuries
+              </span>
+              {activeInjuries.length > 0 && (
+                <span className="ml-2 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600">
+                  {activeInjuries.length} active
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Active injuries */}
+          {activeInjuries.length > 0 && (
+            <div className="mt-4 flex flex-col gap-2">
+              {activeInjuries.map((inj) => {
+                const isHigh = inj.severity === 'high' || inj.severity === 'critical';
+                const isModerate = inj.severity === 'moderate';
+                return (
+                  <div
+                    key={inj.id}
+                    className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
+                      isHigh
+                        ? 'border-red-500/30 bg-red-500/8'
+                        : isModerate
+                          ? 'border-amber-500/30 bg-amber-500/8'
+                          : 'border-border bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                          isHigh
+                            ? 'bg-red-500/15'
+                            : isModerate
+                              ? 'bg-amber-500/15'
+                              : 'bg-muted'
+                        }`}
+                      >
+                        <ShieldAlert
+                          className={`size-4 ${isHigh ? 'text-red-500' : isModerate ? 'text-amber-500' : 'text-muted-foreground'}`}
+                        />
+                      </div>
+                      <div>
+                        <span className="text-base font-medium capitalize">{inj.body_part}</span>
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          {formatDate(inj.occurred_at)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${
+                          isHigh
+                            ? 'bg-red-500/15 text-red-600'
+                            : isModerate
+                              ? 'bg-amber-500/15 text-amber-600'
+                              : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {inj.severity}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleMarkRecovered(inj.id)}
+                        className="text-sm"
+                      >
+                        Mark recovered
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Body part</span>
+
+          {/* Recovered */}
+          {injuries.filter((i) => i.recovered_at).length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-muted-foreground">Recovered</p>
+              <div className="flex flex-col gap-1.5">
+                {injuries
+                  .filter((i) => i.recovered_at)
+                  .map((inj) => (
+                    <div
+                      key={inj.id}
+                      className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2"
+                    >
+                      <span className="text-sm capitalize text-muted-foreground">
+                        {inj.body_part}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Recovered {formatDate(inj.recovered_at)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {injuries.length === 0 && (
+            <p className="mt-4 text-sm text-muted-foreground">No injuries logged.</p>
+          )}
+
+          {/* Add injury */}
+          <div className="mt-4 flex items-end gap-2">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-sm font-medium text-muted-foreground">Body part</span>
               <input
                 value={newInjuryPart}
                 onChange={(e) => setNewInjuryPart(e.target.value)}
@@ -420,8 +630,8 @@ export default function ProfilePage() {
                 className={`${inputClassName} placeholder:text-muted-foreground`}
               />
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Severity</span>
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-sm font-medium text-muted-foreground">Severity</span>
               <select
                 value={newInjurySeverity}
                 onChange={(e) => setNewInjurySeverity(e.target.value as InjurySeverity)}
@@ -434,13 +644,13 @@ export default function ProfilePage() {
                 ))}
               </select>
             </label>
-            <Button size="sm" variant="outline" onClick={handleAddInjury}>
-              <Plus className="size-3.5" />
-              Add injury
+            <Button size="lg" variant="outline" onClick={handleAddInjury}>
+              <Plus className="size-4" />
+              Add
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
