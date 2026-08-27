@@ -6,23 +6,29 @@ import Image from 'next/image';
 import {
   AlertTriangle,
   ArrowLeft,
+  BarChart3,
   CheckCircle,
+  ChevronDown,
+  ChevronRight,
   Download,
   HelpCircle,
   Info,
-  Loader2
+  Loader2,
+  TrendingUp
 } from 'lucide-react';
-import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
-import {Button} from '@/components/ui/button';
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent
 } from '@/components/ui/accordion';
+import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
+import {Button} from '@/components/ui/button';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
 import CorrectionCanvas from '@/app/(dashboard)/_components/CorrectionCanvas';
 import EvidenceNote from '@/app/(dashboard)/_components/EvidenceNote';
+import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
+import {RepBreakdownChart, PassFailPieChart} from '@/app/(dashboard)/_components/ReportCharts';
 import SkeletonPlayer from '@/app/(dashboard)/_components/SkeletonPlayer';
 import {cn} from '@/lib/utils';
 import {
@@ -41,10 +47,18 @@ const POLL_INTERVAL_MS = 4000;
 
 const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
 
-const SEVERITY_STYLES: Record<CheckSeverity, {bg: string; text: string}> = {
-  info: {bg: 'bg-info-bg', text: 'text-info'},
-  warn: {bg: 'bg-warning-bg', text: 'text-warning'},
-  risk: {bg: 'bg-danger-bg', text: 'text-danger'}
+const COLORS = {
+  blue: '#3b82f6',
+  primary: '#5e6ad2',
+  green: '#22c55e',
+  amber: '#f59e0b',
+  red: '#ef4444'
+} as const;
+
+const SEVERITY_STYLES: Record<CheckSeverity, {bg: string; text: string; accent: string}> = {
+  info: {bg: 'bg-blue-500/10', text: 'text-blue-600', accent: 'border-l-blue-500'},
+  warn: {bg: 'bg-amber-500/10', text: 'text-amber-600', accent: 'border-l-amber-500'},
+  risk: {bg: 'bg-red-500/10', text: 'text-red-600', accent: 'border-l-red-500'}
 };
 
 function exerciseLabel(exercise: string | null): string {
@@ -52,14 +66,15 @@ function exerciseLabel(exercise: string | null): string {
   return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
 }
 
-function SeverityChip({severity}: {severity: CheckSeverity}) {
+function SeverityChip({severity, size = 'sm'}: {severity: CheckSeverity; size?: 'sm' | 'md'}) {
   const style = SEVERITY_STYLES[severity];
   return (
     <span
       className={cn(
-        'rounded-full px-2 py-0.5 text-[10px] font-medium capitalize',
+        'rounded-full font-medium capitalize',
         style.bg,
-        style.text
+        style.text,
+        size === 'md' ? 'px-3 py-1 text-sm' : 'px-2 py-0.5 text-xs'
       )}
     >
       {severity}
@@ -96,11 +111,11 @@ function EvidenceImage({videoId, filename}: {videoId: string; filename: string})
     };
   }, [videoId, filename]);
 
-  if (error) return <p className="text-xs text-muted-foreground">Evidence image unavailable.</p>;
+  if (error) return <p className="text-sm text-muted-foreground">Evidence image unavailable.</p>;
   if (!src) {
     return (
-      <div className="flex h-40 w-full max-w-sm items-center justify-center rounded-lg bg-muted">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <div className="flex h-48 w-full max-w-sm items-center justify-center rounded-xl bg-muted">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -153,8 +168,11 @@ function DownloadPdfButton({videoId}: {videoId: string}) {
 }
 
 function CheckRow({videoId, check}: {videoId: string; check: CheckResult}) {
+  const style = SEVERITY_STYLES[check.severity];
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+    <div
+      className={`flex flex-col gap-3 rounded-xl border border-border border-l-4 p-4 ${style.accent}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <OutcomeIcon outcome={check.outcome} />
@@ -235,6 +253,72 @@ function MetricsTable({rep}: {rep: RepBlock}) {
   );
 }
 
+function RepAccordion({
+  videoId,
+  rep,
+  defaultOpen
+}: {
+  videoId: string;
+  rep: AnalysisReport['reps'][0];
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  const repFailed = rep.checks.some((c) => c.outcome === 'fail');
+  const repPassed = rep.checks.filter((c) => c.outcome === 'pass').length;
+  const repTotal = rep.checks.length;
+
+  return (
+    <div
+      className={`overflow-hidden rounded-xl ring-1 ring-foreground/10 border-l-4 ${
+        repFailed ? 'border-l-red-500' : 'border-l-green-500'
+      }`}
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 bg-card px-5 py-4 text-left transition-colors hover:bg-muted/30"
+      >
+        {open ? (
+          <ChevronDown className="size-5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+        )}
+        <div
+          className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+            repFailed ? 'bg-red-500/10' : 'bg-green-500/10'
+          }`}
+        >
+          {repFailed ? (
+            <AlertTriangle className="size-4 text-red-500" />
+          ) : (
+            <CheckCircle className="size-4 text-green-500" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-base font-semibold text-foreground">Rep {rep.index + 1}</span>
+        </div>
+        <span className="text-sm text-muted-foreground">
+          {repPassed}/{repTotal} checks
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border bg-card/50 px-5 py-4">
+          <div className="flex flex-col gap-3">
+            {rep.checks.map((check) => (
+              <CheckRow key={check.check_id} videoId={videoId} check={check} />
+            ))}
+            {Object.keys(rep.metrics).length > 0 && (
+              <div className="mt-2">
+                <p className="mb-2 text-sm font-medium text-muted-foreground">Metrics</p>
+                <MetricsTable rep={rep} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BiomechanicsReportPage({params}: {params: Promise<{videoId: string}>}) {
   const {videoId} = use(params);
   const [status, setStatus] = useState<VideoStatus | null>(null);
@@ -278,10 +362,10 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
   }, [videoId]);
 
   const backLink = (
-    <Link href="/dashboard/videos" className="w-fit">
-      <Button variant="ghost" size="sm">
-        <ArrowLeft className="mr-1 size-3" />
-        Back to videos
+    <Link href="/dashboard/biomechanics" className="w-fit">
+      <Button variant="ghost" size="lg">
+        <ArrowLeft className="mr-1 size-4" />
+        Back to reports
       </Button>
     </Link>
   );
@@ -290,7 +374,10 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
     return (
       <div className="flex flex-col gap-6">
         {backLink}
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="flex flex-col items-center gap-3 py-12">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-base text-muted-foreground">Loading analysis...</p>
+        </div>
       </div>
     );
   }
@@ -312,17 +399,27 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
       <div className="flex flex-col gap-6">
         {backLink}
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Biomechanics Report</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold text-foreground">Biomechanics Report</h1>
+          <p className="mt-1 text-base text-muted-foreground">
             {status === 'failed'
               ? (failureReason ?? 'Analysis failed.')
               : 'Your video is still being analyzed — this page will update automatically.'}
           </p>
         </div>
         {status !== 'failed' && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Status: {status}
+          <div className="relative overflow-hidden rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+            <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.amber}} />
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+                <Loader2 className="size-6 text-amber-500 animate-spin" />
+              </div>
+              <div>
+                <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  Status
+                </span>
+                <p className="text-base font-medium text-foreground capitalize">{status}</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -333,7 +430,12 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
     return (
       <div className="flex flex-col gap-6">
         {backLink}
-        <p className="text-sm text-muted-foreground">No report available for this video.</p>
+        <div className="relative overflow-hidden rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+          <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.blue}} />
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-base text-muted-foreground">No report available for this video.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -341,9 +443,12 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
   const isWrongView = report.input.flags.includes('wrong_view');
   const {summary} = report;
   const formGif = exerciseGifUrl(report.exercise);
+  const totalChecks = summary.passed + summary.failed + summary.not_assessable;
+  const passRate = totalChecks > 0 ? Math.round((summary.passed / totalChecks) * 100) : null;
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div className="flex flex-col gap-2">
         {backLink}
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -357,15 +462,16 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </div>
       </div>
 
+      {/* Wrong view warning */}
       {isWrongView && (
         <Card className="border-warning/40">
           <CardContent className="flex items-start gap-3 py-4">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
             <div>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-base font-medium text-foreground">
                 We couldn&apos;t assess this video
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">{summary.headline}</p>
+              <p className="mt-1 text-base text-muted-foreground">{summary.headline}</p>
             </div>
           </CardContent>
         </Card>
@@ -426,8 +532,6 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {/* The headline used to be repeated here from the hero above, so the
-              two cards said the same sentence back to back. */}
           {report.technique_score != null && (
             <div className="flex items-baseline gap-2">
               <span className="font-mono text-4xl font-semibold tabular-nums text-foreground">
@@ -443,12 +547,12 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
             <span className="text-muted-foreground">{report.segmentation.count} reps detected</span>
           </div>
           {Object.keys(summary.severity_counts).length > 0 && (
-            <div className="flex gap-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(summary.severity_counts).map(([severity, count]) => (
-                <span key={severity} className="flex items-center gap-1.5">
-                  <SeverityChip severity={severity as CheckSeverity} />
-                  <span className="text-xs text-muted-foreground">×{count}</span>
-                </span>
+                <div key={severity} className="flex items-center gap-1.5">
+                  <SeverityChip severity={severity as CheckSeverity} size="md" />
+                  <span className="text-sm text-muted-foreground">×{count}</span>
+                </div>
               ))}
             </div>
           )}
@@ -461,6 +565,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
 
       {/* Renders itself away when the analysis has no stored pose frames. */}
       <SkeletonPlayer videoId={videoId} />
+
+      {/* Charts */}
+      {report.reps.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <RepBreakdownChart report={report} />
+          <PassFailPieChart report={report} />
+        </div>
+      )}
 
       {formGif && (
         <Card>
@@ -487,6 +599,8 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           </CardContent>
         </Card>
       )}
+
+      {/* Per-rep breakdown */}
       {report.reps.length > 0 && (
         <Card>
           <CardHeader>
@@ -499,10 +613,6 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
                 return (
                   <AccordionItem key={rep.index} value={`rep-${rep.index}`}>
                     <AccordionTrigger>
-                      {/* Every row used to be an identical warning triangle,
-                          so seven failing reps looked the same as one. Naming
-                          the failed checks makes the list scannable without
-                          opening anything. */}
                       <span className="flex flex-wrap items-center gap-2">
                         {repFailed ? (
                           <AlertTriangle className="size-3.5 shrink-0 text-danger" />
@@ -543,7 +653,8 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
         </Card>
       )}
 
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
+      {/* Timestamp */}
+      <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
         <Info className="size-4 shrink-0" />
         Analysis generated on{' '}
         {new Date(report.created_at).toLocaleDateString(undefined, {
