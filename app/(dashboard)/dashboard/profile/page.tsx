@@ -25,7 +25,7 @@ const SEVERITIES: InjurySeverity[] = ['low', 'moderate', 'high', 'critical'];
 const inputClassName =
   'h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground outline-none focus:ring-2 focus:ring-ring/50';
 const selectClassName =
-  'flex h-10 min-w-0 rounded-lg bg-input px-3 py-1 text-base text-foreground shadow-sm outline-none ring-1 ring-foreground/10 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50';
+  'flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 appearance-none bg-[length:1rem] bg-[right_0.6rem_center] bg-no-repeat pr-9 bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2362666d%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E")]';
 
 const COLORS = {
   blue: '#3b82f6',
@@ -362,7 +362,7 @@ export default function ProfilePage() {
             <div className="mt-4 flex flex-wrap gap-2">
               {myConditions.map((c) => (
                 <span
-                  key={c.id}
+                  key={c.medical_condition_id}
                   className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-700"
                 >
                   {c.condition.name_en}

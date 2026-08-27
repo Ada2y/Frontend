@@ -15,6 +15,17 @@ const geistMono = Geist_Mono({
   subsets: ['latin']
 });
 
+// Runs before first paint, so the page never flashes the wrong theme. It
+// always resolves to an explicit data-theme, which is why globals.css needs
+// only two token blocks instead of three.
+const THEME_INIT = `(function(){try{
+  var stored = localStorage.getItem('theme');
+  var resolved = stored === 'light' || stored === 'dark'
+    ? stored
+    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', resolved);
+}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+
 export const metadata: Metadata = {
   title: 'Ada2y',
   description: 'Sports analytics platform'
@@ -36,7 +47,11 @@ export default function RootLayout({
       dir="ltr"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{__html: THEME_INIT}} />
+      </head>
       <body className="min-h-full bg-background">
         <AuthProvider>
           <TooltipProvider delayDuration={200}>{children}</TooltipProvider>

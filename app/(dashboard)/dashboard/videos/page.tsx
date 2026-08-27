@@ -4,7 +4,9 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
 import {
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
+  CheckCircle2,
   Clock,
   Film,
   Loader2,
@@ -14,6 +16,7 @@ import {
   X,
   XCircle
 } from 'lucide-react';
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
 import {
@@ -27,7 +30,7 @@ import {
 } from '@/lib/api';
 
 const selectClassName =
-  'flex h-10 min-w-0 rounded-lg bg-input px-3 py-1 text-base text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full';
+  'flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full appearance-none bg-[length:1rem] bg-[right_0.6rem_center] bg-no-repeat pr-9 bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2362666d%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E")]';
 
 const SPORT_OPTIONS: {value: VideoSport; label: string}[] = [
   {value: 'gym', label: 'Gym'},
@@ -50,8 +53,8 @@ const STATUS_CONFIG: Record<VideoStatus, {
   label: string;
 }> = {
   uploaded: {
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-600',
+    bg: 'bg-info-bg',
+    text: 'text-info',
     accent: 'border-l-blue-500',
     icon: Upload,
     label: 'Uploaded'
@@ -64,22 +67,22 @@ const STATUS_CONFIG: Record<VideoStatus, {
     label: 'Queued'
   },
   processing: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-600',
+    bg: 'bg-warning-bg',
+    text: 'text-warning',
     accent: 'border-l-amber-500',
     icon: Loader2,
     label: 'Processing'
   },
   completed: {
-    bg: 'bg-green-500/10',
-    text: 'text-green-600',
+    bg: 'bg-success-bg',
+    text: 'text-success',
     accent: 'border-l-green-500',
     icon: CheckCircle,
     label: 'Completed'
   },
   failed: {
-    bg: 'bg-red-500/10',
-    text: 'text-red-600',
+    bg: 'bg-danger-bg',
+    text: 'text-danger',
     accent: 'border-l-red-500',
     icon: XCircle,
     label: 'Failed'
@@ -123,14 +126,43 @@ function formatExercise(exercise: VideoExercise | null): string | null {
   return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
 }
 
-function StatusBadge({status}: {status: VideoStatus}) {
-  const config = STATUS_CONFIG[status];
+/** A video that finished processing but measured nothing (0 reps, wrong
+ * camera angle) is NOT a success. Showing it green as "completed" told the
+ * athlete everything was fine and gave them no reason to re-record. */
+function StatusBadge({video}: {video: VideoListItem}) {
+  const needsRetry = video.status === 'completed' && video.assessable === false;
+
+  if (needsRetry) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">
+        <AlertCircle className="size-3" />
+        Retry needed
+      </span>
+    );
+  }
+
+  if (video.status === 'completed') {
+    const failed = video.failed ?? 0;
+    return failed > 0 ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning">
+        <AlertTriangle className="size-3" />
+        {failed} to work on
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
+        <CheckCircle2 className="size-3" />
+        Good form
+      </span>
+    );
+  }
+
+  const config = STATUS_CONFIG[video.status];
   const Icon = config.icon;
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold capitalize ${config.bg} ${config.text}`}
     >
-      <Icon className={`size-3.5 ${status === 'processing' ? 'animate-spin' : ''}`} />
+      <Icon className={`size-3.5 ${video.status === 'processing' ? 'animate-spin' : ''}`} />
       {config.label}
     </span>
   );
@@ -439,72 +471,90 @@ function UploadSection({
             className="hidden"
             aria-label="Upload video file"
           />
+
+          {selectedFile && (
+            <div className="flex flex-col gap-3 w-full">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Video className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {selectedFile.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon-xs" onClick={handleRemoveFile}>
+                  <X className="size-3" />
+                </Button>
+              </div>
+
+              {uploading && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-200"
+                      style={{width: `${Math.min(progress, 100)}%`}}
+                    />
+                  </div>
+                  <p className="text-right text-xs text-muted-foreground">{progress}%</p>
+                </div>
+              )}
+
+              {uploadError && (
+                <div className="flex items-center gap-2 text-sm text-danger">
+                  <AlertCircle className="size-4 shrink-0" />
+                  {uploadError}
+                </div>
+              )}
+
+              {uploadComplete && (
+                <div className="flex items-center gap-2 text-sm text-success">
+                  <CheckCircle className="size-4" />
+                  Upload complete — queued for analysis
+                </div>
+              )}
+
+              {!uploading && !uploadComplete && (
+                <Button onClick={handleUpload} className="w-full">
+                  Upload
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Selected file */}
-        {selectedFile && (
+        {/* Selected file fallback (when not inside drop zone) */}
+        {!selectedFile && uploading && (
           <div className="mt-5 flex flex-col gap-4 rounded-xl bg-muted/30 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                  <Film className="size-6 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-base font-medium text-foreground">
-                    {selectedFile.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
-                  </p>
-                </div>
+            <div className="flex flex-col gap-2">
+              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-300"
+                  style={{width: `${Math.min(progress, 100)}%`}}
+                />
               </div>
-              <button
-                onClick={handleRemoveFile}
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Uploading...</span>
+                <span className="text-sm font-semibold text-foreground">{progress}%</span>
+              </div>
             </div>
+          </div>
+        )}
 
-            {/* Progress bar */}
-            {uploading && (
-              <div className="flex flex-col gap-2">
-                <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-300"
-                    style={{width: `${Math.min(progress, 100)}%`}}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Uploading...</span>
-                  <span className="text-sm font-semibold text-foreground">{progress}%</span>
-                </div>
-              </div>
-            )}
+        {uploadError && !selectedFile && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-base text-red-600">
+            <AlertCircle className="size-5 shrink-0" />
+            {uploadError}
+          </div>
+        )}
 
-            {/* Error */}
-            {uploadError && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-base text-red-600">
-                <AlertCircle className="size-5 shrink-0" />
-                {uploadError}
-              </div>
-            )}
-
-            {/* Success */}
-            {uploadComplete && (
-              <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/8 px-4 py-3 text-base text-green-600">
-                <CheckCircle className="size-5" />
-                Upload complete — queued for analysis
-              </div>
-            )}
-
-            {/* Upload button */}
-            {!uploading && !uploadComplete && (
-              <Button size="lg" onClick={handleUpload} className="w-full">
-                <Upload className="size-4" />
-                Upload
-              </Button>
-            )}
+        {uploadComplete && !selectedFile && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/8 px-4 py-3 text-base text-green-600">
+            <CheckCircle className="size-5" />
+            Upload complete — queued for analysis
           </div>
         )}
       </div>
@@ -577,7 +627,7 @@ function VideoCard({video}: {video: VideoListItem}) {
             </div>
           )}
 
-          <StatusBadge status={video.status} />
+          <StatusBadge video={video} />
         </div>
       </div>
 

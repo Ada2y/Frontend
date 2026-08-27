@@ -69,6 +69,10 @@ function formatFullDate(iso: string) {
   });
 }
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+}
+
 function SkeletonCard() {
   return (
     <div className="relative overflow-hidden rounded-xl bg-card p-6 ring-1 ring-foreground/10">
@@ -360,34 +364,34 @@ function StatsRow({suggestions}: {suggestions: BiometricProfile[]}) {
         </div>
       )}
 
-              {topSport && (() => {
-                const TopIcon = SPORT_CONFIG[topSport[0]]?.icon ?? Medal;
-                const topColor = SPORT_CONFIG[topSport[0]]?.color ?? COLORS.blue;
-                return (
-                  <div className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-                    <div
-                      className="absolute inset-x-0 top-0 h-[3px]"
-                      style={{background: topColor}}
-                    />
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                          Top pick
-                        </span>
-                        <span className="text-4xl font-bold tracking-tight capitalize text-foreground">
-                          {topSport[0]}
-                        </span>
-                      </div>
-                      <div
-                        className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-                        style={{backgroundColor: `${topColor}10`, color: topColor}}
-                      >
-                        <TopIcon className="size-6" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+      {topSport && (() => {
+        const TopIcon = SPORT_CONFIG[topSport[0]]?.icon ?? Medal;
+        const topColor = SPORT_CONFIG[topSport[0]]?.color ?? COLORS.blue;
+        return (
+          <div className="relative overflow-hidden rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+            <div
+              className="absolute inset-x-0 top-0 h-[3px]"
+              style={{background: topColor}}
+            />
+            <div className="flex items-start justify-between">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  Top pick
+                </span>
+                <span className="text-4xl font-bold tracking-tight capitalize text-foreground">
+                  {topSport[0]}
+                </span>
+              </div>
+              <div
+                className="flex size-12 shrink-0 items-center justify-center rounded-xl"
+                style={{backgroundColor: `${topColor}10`, color: topColor}}
+              >
+                <TopIcon className="size-6" />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -496,18 +500,32 @@ export default function SportSuggestionPage() {
 
           {/* Featured (latest) */}
           {latest && (
-            <FeaturedCard suggestion={latest} bodyMetrics={bodyMetrics} injuries={injuries} />
+            <div className="max-w-3xl">
+              <FeaturedCard suggestion={latest} bodyMetrics={bodyMetrics} injuries={injuries} />
+            </div>
           )}
 
           {/* History */}
           {older.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-lg font-semibold text-foreground">Previous suggestions</h2>
-              <div className="flex flex-col gap-3">
+            <div className="max-w-3xl">
+              <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Earlier suggestions
+              </p>
+              <ul className="flex flex-col divide-y divide-border rounded-lg ring-1 ring-foreground/10">
                 {older.map((s, i) => (
-                  <HistoryCard key={s.id} suggestion={s} index={i + 1} />
+                  <li
+                    key={s.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                  >
+                    <span className="capitalize text-foreground">
+                      {s.recommended_sport ?? 'No suggestion'}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {formatDate(s.measured_at)}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
         </>

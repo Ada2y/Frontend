@@ -155,7 +155,8 @@ export function PassFailPieChart({report}: {report: AnalysisReport}) {
                 if (!active || !payload?.length) return null;
                 const d = payload[0];
                 const total = data.reduce((s, x) => s + x.value, 0);
-                const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                const val = (d.value as number) ?? 0;
+                const pct = total > 0 ? Math.round((val / total) * 100) : 0;
                 return (
                   <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-md">
                     <p className="font-medium text-foreground">{d.name}</p>

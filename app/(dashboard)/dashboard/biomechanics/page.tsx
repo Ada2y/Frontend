@@ -10,7 +10,11 @@ import {
   TrendingUp,
   Video
 } from 'lucide-react';
+import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
+import EmptyState from '@/app/(dashboard)/_components/EmptyState';
+import SessionComparison from '@/app/(dashboard)/_components/SessionComparison';
 import {
   ApiClient,
   FOOTBALL_EXERCISES,
@@ -239,7 +243,7 @@ function ReportCard({video}: {video: VideoListItem}) {
   );
 }
 
-export default function BiomechanicsPage() {
+function SessionList() {
   const [videos, setVideos] = useState<VideoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -261,25 +265,83 @@ export default function BiomechanicsPage() {
     };
   }, []);
 
-  if (loading) return <SkeletonPage />;
-
-  if (error) {
+  if (loading) {
     return (
-      <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Biomechanics</h1>
-          <p className="text-base text-muted-foreground">
-            Movement analysis and coaching feedback from your uploaded videos.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-base text-red-600">
-          <AlertTriangle className="size-5 shrink-0" />
-          {error}
-        </div>
+      <div className="grid grid-cols-1 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="h-20 animate-pulse rounded-xl bg-card ring-1 ring-foreground/10"
+          />
+        ))}
       </div>
     );
   }
 
+  if (error) return <p className="text-sm text-danger">{error}</p>;
+
+  if (videos.length === 0) {
+    return (
+      <EmptyState
+        icon={Activity}
+        title="No analyses yet"
+        description="Upload a video and it will be processed for movement analysis."
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {videos.map((v) => {
+        const unassessable = v.assessable === false;
+        const hasFailures = (v.failed ?? 0) > 0;
+        const badge = unassessable
+          ? {label: 'Retry needed', className: 'bg-danger-bg text-danger'}
+          : hasFailures
+            ? {label: 'Needs work', className: 'bg-warning-bg text-warning'}
+            : {label: 'Good form', className: 'bg-success-bg text-success'};
+
+        return (
+          <Link key={v.id} href={`/dashboard/biomechanics/${v.id}`}>
+            <Card size="sm" className="cursor-pointer transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="truncate text-sm">
+                    {exerciseLabel(v.exercise) ?? v.original_filename ?? 'Untitled video'}
+                  </CardTitle>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${badge.className}`}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>{v.rep_count ?? 0} reps</span>
+                  <span>
+                    {v.passed ?? 0} passed / {v.failed ?? 0} failed
+                  </span>
+                  <span>
+                    {new Date(v.created_at).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
+                {v.headline && (
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{v.headline}</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function BiomechanicsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -289,34 +351,18 @@ export default function BiomechanicsPage() {
         </p>
       </div>
 
-      <StatsRow videos={videos} />
-
-      {videos.length === 0 ? (
-        <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: COLORS.blue}} />
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-500/10">
-              <Activity className="size-7 text-blue-500" />
-            </div>
-            <p className="text-lg font-medium text-foreground">No analyses yet</p>
-            <p className="text-sm text-muted-foreground">
-              Upload a video and it will be processed for movement analysis.
-            </p>
-            <Link href="/dashboard/videos" className="mt-2">
-              <span className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-                <Video className="size-4" />
-                Go to videos
-              </span>
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {videos.map((v) => (
-            <ReportCard key={v.id} video={v} />
-          ))}
-        </div>
-      )}
+      <Tabs defaultValue="sessions">
+        <TabsList>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="compare">Compare</TabsTrigger>
+        </TabsList>
+        <TabsContent value="sessions">
+          <SessionList />
+        </TabsContent>
+        <TabsContent value="compare">
+          <SessionComparison />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

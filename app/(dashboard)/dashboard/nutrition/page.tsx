@@ -33,7 +33,8 @@ import {
   type NutritionStatus,
   type TrainingPlan
 } from '@/lib/api';
-import {LAST_NUTRITION_ID_KEY, LAST_TRAINING_PLAN_ID_KEY} from '@/lib/last-generated';
+const LAST_NUTRITION_ID_KEY = 'ada2y:last_nutrition_id';
+const LAST_TRAINING_PLAN_ID_KEY = 'ada2y:last_training_plan_id';
 
 const COLORS = {
   blue: '#3b82f6',
@@ -320,7 +321,7 @@ function ContextPanel({conditions, bodyMetrics, trainingPlan}: {
                 <div className="flex flex-wrap gap-1.5">
                   {conditions.map((c) => (
                     <span
-                      key={c.id}
+                      key={c.medical_condition_id}
                       className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700"
                     >
                       {c.condition.name_en}
@@ -547,33 +548,42 @@ export default function NutritionPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Server-side source of truth. Previously this read an id out of
+  // localStorage, so your recommendation vanished on logout or in another
+  // browser and the only way back was to Generate again.
   useEffect(() => {
+    let cancelled = false;
     const savedId =
       typeof window !== 'undefined' ? localStorage.getItem(LAST_NUTRITION_ID_KEY) : null;
     if (savedId) {
       ApiClient.getNutrition(savedId)
-        .then(setRecommendation)
-        .catch(() => localStorage.removeItem(LAST_NUTRITION_ID_KEY))
-        .finally(() => setLoading(false));
+        .then((rec) => !cancelled && setRecommendation(rec))
+        .catch(() => {
+          if (typeof window !== 'undefined') localStorage.removeItem(LAST_NUTRITION_ID_KEY);
+        })
+        .finally(() => !cancelled && setLoading(false));
     } else {
       setLoading(false);
     }
     ApiClient.listNutrition()
-      .then(setHistory)
+      .then((items) => !cancelled && setHistory(items))
       .catch(() => {});
     ApiClient.listMyMedicalConditions()
-      .then(setConditions)
+      .then((items) => !cancelled && setConditions(items))
       .catch(() => {});
     ApiClient.listMyBodyMetrics()
-      .then(setBodyMetrics)
+      .then((items) => !cancelled && setBodyMetrics(items))
       .catch(() => {});
     const planId =
       typeof window !== 'undefined' ? localStorage.getItem(LAST_TRAINING_PLAN_ID_KEY) : null;
     if (planId) {
       ApiClient.getTrainingPlan(planId)
-        .then(setTrainingPlan)
+        .then((plan) => !cancelled && setTrainingPlan(plan))
         .catch(() => {});
     }
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleGenerate() {
@@ -603,7 +613,6 @@ export default function NutritionPage() {
         </div>
       )}
 
-      {/* Generating indicator */}
       {generating && !recommendation && (
         <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4">
           <Loader2 className="size-5 animate-spin text-primary" />

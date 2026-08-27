@@ -5,6 +5,7 @@ import {AlertCircle, Calendar, Check, CheckCircle, Dumbbell, Loader2, Plus, Spar
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
+import {cn} from '@/lib/utils';
 import {
   ApiClient,
   type TrainingPlan,
@@ -12,7 +13,6 @@ import {
   type TrainingSessionLog,
   type VideoSport
 } from '@/lib/api';
-import {LAST_TRAINING_PLAN_ID_KEY} from '@/lib/last-generated';
 
 const DAY_NAMES = [
   '',
@@ -25,13 +25,28 @@ const DAY_NAMES = [
   'Sunday'
 ];
 
+// Borg CR10. Anchors matter more than the numbers - an unlabelled 1-10 slider
+// gets answered inconsistently, which is worse than no data for a ratio that
+// compares this week against the same athlete's baseline.
+const RPE_SCALE = [
+  {value: 2, label: '2 — very easy'},
+  {value: 3, label: '3 — easy'},
+  {value: 4, label: '4 — comfortable'},
+  {value: 5, label: '5 — moderate'},
+  {value: 6, label: '6 — somewhat hard'},
+  {value: 7, label: '7 — hard'},
+  {value: 8, label: '8 — very hard'},
+  {value: 9, label: '9 — near maximal'},
+  {value: 10, label: '10 — maximal'}
+];
+
 const SPORTS: {value: VideoSport; label: string}[] = [
   {value: 'gym', label: 'Gym'},
   {value: 'football', label: 'Football'}
 ];
 
 const selectClassName =
-  'flex h-10 min-w-0 rounded-lg bg-input px-3 py-1 text-base text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50';
+  'flex h-10 min-w-0 rounded-lg bg-input px-3 py-1 text-base text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 appearance-none bg-[length:1rem] bg-[right_0.6rem_center] bg-no-repeat pr-9 bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2362666d%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E")]';
 
 const COLORS = {
   blue: '#3b82f6',
@@ -52,15 +67,90 @@ const DAY_COLORS: Record<number, string> = {
 };
 
 function formatLoad(ex: TrainingPlanExercise): string {
-  if (ex.load_kg == null) return 'BW';
-  return `${ex.load_kg}kg`;
+  if (ex.load_kg == null) return 'Bodyweight';
+  // The API sends a NUMERIC, so 80 arrives as "80.00". Two decimals on a
+  // barbell load implies a precision no plate set has.
+  const kg = Math.round(ex.load_kg * 10) / 10;
+  return `${kg} kg`;
 }
 
 function formatRest(seconds: number | null) {
   if (!seconds) return null;
   if (seconds < 60) return `${seconds}s`;
   const minutes = seconds / 60;
-  return `${minutes % 1 === 0 ? minutes : minutes.toFixed(1)}m`;
+  return `${minutes % 1 === 0 ? minutes : minutes.toFixed(1)}m rest`;
+}
+
+/** JS getDay() is 0=Sunday; the backend's day_of_week is 1=Monday..7=Sunday. */
+function todayDayOfWeek(): number {
+  const js = new Date().getDay();
+  return js === 0 ? 7 : js;
+}
+
+function DayCard({
+  dayIndex,
+  exercises,
+  isToday
+}: {
+  dayIndex: number;
+  exercises: TrainingPlanExercise[];
+  isToday: boolean;
+}) {
+  const isRestDay = exercises.length === 0;
+  const color = DAY_COLORS[dayIndex] ?? COLORS.primary;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+      <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: color}} />
+      <div className="p-5">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-base font-semibold text-foreground">
+            {DAY_NAMES[dayIndex]}
+            {isToday && (
+              <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary-foreground uppercase">
+                Today
+              </span>
+            )}
+          </span>
+          {!isRestDay && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+              {exercises.length} exercise{exercises.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        {isRestDay ? (
+          <div className="mt-4 flex items-center gap-2 text-muted-foreground">
+            <CheckCircle className="size-4" />
+            <span className="text-sm">Rest day</span>
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-col gap-2.5">
+            {exercises.map((ex) => {
+              const rest = formatRest(ex.rest_seconds);
+              return (
+                <div key={ex.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5">
+                  <span className="text-base font-medium text-foreground">{ex.exercise.name_en}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
+                      {ex.sets ?? '-'}×{ex.reps ?? '-'}
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                      {formatLoad(ex)}
+                    </span>
+                    {rest && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                        {rest}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function formatLogDate(iso: string) {
@@ -161,82 +251,42 @@ function EmptyPlan({sport, onSportChange, onGenerate, generating}: {
   );
 }
 
-function DayCard({dayIndex, exercises}: {dayIndex: number; exercises: TrainingPlanExercise[]}) {
-  const isRestDay = exercises.length === 0;
-  const color = DAY_COLORS[dayIndex] ?? COLORS.primary;
-
-  return (
-    <div className="relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-      <div className="absolute inset-x-0 top-0 h-[3px]" style={{background: color}} />
-      <div className="p-5">
-        <div className="flex items-center justify-between">
-          <span className="text-base font-semibold text-foreground">{DAY_NAMES[dayIndex]}</span>
-          {!isRestDay && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-              {exercises.length} exercise{exercises.length > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-        {isRestDay ? (
-          <div className="mt-4 flex items-center gap-2 text-muted-foreground">
-            <CheckCircle className="size-4" />
-            <span className="text-sm">Rest day</span>
-          </div>
-        ) : (
-          <div className="mt-4 flex flex-col gap-2.5">
-            {exercises.map((ex) => {
-              const rest = formatRest(ex.rest_seconds);
-              return (
-                <div key={ex.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5">
-                  <span className="text-base font-medium text-foreground">{ex.exercise.name_en}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
-                      {ex.sets ?? '-'}×{ex.reps ?? '-'}
-                    </span>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-                      {formatLoad(ex)}
-                    </span>
-                    {rest && (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-                        {rest}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function TrainingPlanPage() {
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [logs, setLogs] = useState<TrainingSessionLog[]>([]);
-  const [loading, setLoading] = useState(
-    () => typeof window !== 'undefined' && !!localStorage.getItem(LAST_TRAINING_PLAN_ID_KEY)
-  );
+  const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<VideoSport>('gym');
   const [generating, setGenerating] = useState(false);
   const [logging, setLogging] = useState(false);
   const [logDay, setLogDay] = useState('');
+  const [logRpe, setLogRpe] = useState('');
   const [logNotes, setLogNotes] = useState('');
+  const today = todayDayOfWeek();
   const [logMessage, setLogMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Server-side source of truth. This used to read an id out of localStorage,
+  // so the plan vanished on logout or in another browser and the only way back
+  // was to Generate again - a real, billed LLM call every time.
   useEffect(() => {
-    const savedId =
-      typeof window !== 'undefined' ? localStorage.getItem(LAST_TRAINING_PLAN_ID_KEY) : null;
-    if (!savedId) return;
-    ApiClient.getTrainingPlan(savedId)
-      .then(setPlan)
-      .catch(() => localStorage.removeItem(LAST_TRAINING_PLAN_ID_KEY))
-      .finally(() => setLoading(false));
-    ApiClient.listTrainingSessionLogs(savedId)
-      .then(setLogs)
-      .catch(() => {});
+    let cancelled = false;
+    ApiClient.getCurrentTrainingPlan()
+      .then((current) => {
+        if (cancelled || !current) return;
+        setPlan(current);
+        // Fetched separately on purpose: losing the (secondary) session-log
+        // history must never wipe out an otherwise-valid plan.
+        ApiClient.listTrainingSessionLogs(current.id)
+          .then((rows) => !cancelled && setLogs(rows))
+          .catch(() => {
+            // history is a bonus, not core to the page - fail silently
+          });
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleGenerate() {
@@ -246,7 +296,6 @@ export default function TrainingPlanPage() {
       const newPlan = await ApiClient.generateTrainingPlan(sport);
       setPlan(newPlan);
       setLogs([]);
-      localStorage.setItem(LAST_TRAINING_PLAN_ID_KEY, newPlan.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate a training plan.');
     } finally {
@@ -261,11 +310,13 @@ export default function TrainingPlanPage() {
     try {
       await ApiClient.logTrainingSession(plan.id, {
         day_of_week: logDay ? Number(logDay) : undefined,
+        perceived_exertion: logRpe ? Number(logRpe) : undefined,
         notes: logNotes || undefined
       });
       setLogs(await ApiClient.listTrainingSessionLogs(plan.id));
       setLogMessage('Session logged.');
       setLogDay('');
+      setLogRpe('');
       setLogNotes('');
     } catch (err) {
       setLogMessage(err instanceof Error ? err.message : 'Failed to log session.');
@@ -304,11 +355,19 @@ export default function TrainingPlanPage() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Training Plan</h1>
           <p className="text-base text-muted-foreground">
-            {plan.title} · <span className="capitalize">{plan.status}</span>
+            {plan.title}
           </p>
         </div>
-        <Button size="lg" variant="outline" onClick={handleGenerate} disabled={generating}>
-          {generating && <Loader2 className="size-4 animate-spin" />}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (!window.confirm('This replaces your current plan. Continue?')) return;
+            handleGenerate();
+          }}
+          disabled={generating}
+        >
+          {generating && <Loader2 className="size-3.5 animate-spin" />}
           Regenerate
         </Button>
       </div>
@@ -366,7 +425,12 @@ export default function TrainingPlanPage() {
         <h2 className="mb-3 text-lg font-semibold text-foreground">Weekly schedule</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-            <DayCard key={day} dayIndex={day} exercises={exercisesByDay.get(day) ?? []} />
+            <DayCard
+              key={day}
+              dayIndex={day}
+              exercises={exercisesByDay.get(day) ?? []}
+              isToday={day === today}
+            />
           ))}
         </div>
       </div>

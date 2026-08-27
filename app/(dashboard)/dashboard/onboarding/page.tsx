@@ -230,9 +230,9 @@ export default function OnboardingPage() {
             className="absolute inset-x-0 top-0 h-[3px]"
             style={{background: '#22c55e'}}
           />
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-green-500/10">
-              <CheckCircle className="size-8 text-green-500" />
+          <div className="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-success-bg">
+              <CheckCircle className="size-8 text-success" />
             </div>
             <p className="text-xl font-semibold text-foreground">Profile saved!</p>
             <p className="max-w-sm text-base text-muted-foreground">
@@ -546,15 +546,15 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-base text-red-600">
-                <AlertCircle className="size-5 shrink-0" />
-                {error}
-              </div>
-            )}
-          </div>
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-4 py-3 text-sm text-danger">
+              <AlertCircle className="size-4 shrink-0" />
+              {error}
+            </div>
+          )}
         </div>
       </div>
+    </div>
 
       {/* Navigation */}
       <div className="flex items-center justify-between">

@@ -301,6 +301,9 @@ export interface VideoListItem {
   passed: number | null;
   failed: number | null;
   flags: string[] | null;
+  /** False when a completed video measured nothing (0 reps / wrong view).
+   * null while processing or on outright failure. */
+  assessable: boolean | null;
 }
 
 export interface VideoStatusOut {
@@ -313,22 +316,137 @@ export interface VideoStatusOut {
 export type CheckOutcome = 'pass' | 'fail' | 'not_assessable';
 export type CheckSeverity = 'info' | 'warn' | 'risk';
 
+export interface EvidenceClaim {
+  direction: 'supports' | 'contradicts';
+  finding: string;
+}
+
+/** What a check set is allowed to claim, and the state of the literature
+ * behind it. Served from the rules YAML, where it used to be a comment
+ * nobody outside the repo could see. */
+export interface Evidence {
+  claim_level: string;
+  headline: string;
+  detail: string;
+  calibration: string | null;
+  literature: EvidenceClaim[];
+  limitations: string[];
+}
+
+export interface TrackingQuality {
+  reliable: boolean;
+  bone_length_cv: number | null;
+  shape_ratio: number | null;
+  discontinuity_rate: number | null;
+  reasons: string[];
+}
+
 export interface CheckResult {
   check_id: string;
+  /** Human-readable check name, e.g. "excessive torso lean". */
+  label: string;
   feature: string;
   outcome: CheckOutcome;
   severity: CheckSeverity;
   value: number | null;
   threshold: number | null;
   op: '<=' | '>=';
+  unit: string | null;
   message: string | null;
+  /** One sentence for PASS as well as fail - `message` is null on a pass. */
+  plain: string;
   evidence_image: string | null;
+  /** Corrected-pose overlay. Only present for failed checks whose geometry
+   * could be solved honestly (never for range_-based checks). */
+  correction_image: string | null;
+  /** The same correction as coordinates. Present whenever correction_image is.
+   * Preferred over the baked JPEG: drawing both skeletons on a neutral canvas
+   * stays readable on busy footage, where the overlay does not. */
+  correction_pose: CorrectionPose | null;
+}
+
+export interface PosePoint {
+  name: string;
+  x: number;
+  y: number;
+}
+
+export interface CorrectionPose {
+  frame_index: number;
+  /** Names of the joints this check judged - draw these emphasised. */
+  highlight: string[];
+  summary: string | null;
+  /** Indexed by COCO-17 keypoint order. null = never detected, so skip any
+   * bone touching it rather than drawing to the origin. */
+  actual: (PosePoint | null)[];
+  target: (PosePoint | null)[];
+}
+
+export interface PoseKeypoint {
+  name: string;
+  x: number;
+  y: number;
+  confidence: number;
+}
+
+export interface PoseFrame {
+  frame_index: number;
+  timestamp_ms: number;
+  keypoints: PoseKeypoint[];
+  joint_angles: Record<string, number> | null;
+}
+
+export interface RepWindow {
+  index: number;
+  window_start_frame: number;
+  window_end_frame: number;
+  failed_checks: string[];
+}
+
+export interface PoseSequence {
+  video_session_id: string;
+  fps: number;
+  width: number | null;
+  height: number | null;
+  /** Bone list as index pairs into keypoint_names. */
+  skeleton: [number, number][];
+  keypoint_names: string[];
+  frames: PoseFrame[];
+  reps: RepWindow[];
+}
+
+export interface LabelledMetric {
+  key: string;
+  label: string;
+  unit: string | null;
+  value: number;
+}
+
+export interface FocusItem {
+  check_id: string;
+  label: string;
+  severity: CheckSeverity;
+  reps_affected: number;
+  of_reps: number;
+  message: string | null;
+}
+
+export interface Coaching {
+  what_went_well: string[];
+  focus_on: FocusItem[];
+  next_session_cue: string;
 }
 
 export interface RepBlock {
   index: number;
+  /** Frame bounds of the corrected rep window, on the pose-sequence timeline. */
+  window_start_frame: number | null;
+  window_end_frame: number | null;
   checks: CheckResult[];
   metrics: Record<string, number>;
+  /** Same numbers carrying their own display names, so the UI never has to
+   * guess what "range_angle_torso_incline" means. */
+  labelled_metrics: LabelledMetric[];
 }
 
 export interface AnalysisReport {
@@ -342,9 +460,17 @@ export interface AnalysisReport {
     category: string;
     view: {expected: string | null; measured: string | null; ratio: number | null};
     flags: string[];
+    /** Why nothing was measured, when nothing was measured. "wrong_view" and
+     * "unreliable_tracking" call for different re-record advice. */
+    skip_reason: string | null;
+    tracking: TrackingQuality | null;
+    evidence: Evidence | null;
   };
   segmentation: {mode: string; count: number};
   summary: {
+    /** False when nothing was measured (0 reps, wrong view, all checks NaN).
+     * Branch on this, never on "0 failures". */
+    assessable: boolean;
     total_checks: number;
     passed: number;
     failed: number;
@@ -352,7 +478,120 @@ export interface AnalysisReport {
     severity_counts: Record<string, number>;
     headline: string;
   };
+  coaching: Coaching;
+  /** Folded in from the stored analysis so one call renders the page. */
+  coach_message_en: string | null;
+  coach_message_ar: string | null;
+  technique_score: number | null;
   reps: RepBlock[];
+}
+
+// --- Injury-risk screening -------------------------------------------------
+
+export interface RiskFactor {
+  key: string;
+  label: string;
+  points: number;
+  detail: string;
+  evidence: Record<string, unknown>;
+}
+
+export interface RiskAssessment {
+  available: boolean;
+  score: number | null;
+  band: 'low' | 'moderate' | 'elevated' | null;
+  factors: RiskFactor[];
+  note: string;
+  disclaimer: string;
+}
+
+export interface Milestone {
+  key: string;
+  label: string;
+  description: string;
+  achieved_on: string;
+}
+
+export interface WeeklyActivity {
+  week_start: string;
+  active_days: number;
+  in_progress: boolean;
+}
+
+export interface Streaks {
+  current_streak: number;
+  longest_streak: number;
+  active_days_last_7: number;
+  active_days_last_30: number;
+  total_active_days: number;
+  weekly: WeeklyActivity[];
+  milestones: Milestone[];
+  /** Echoed back so a surprising streak is explainable. */
+  timezone: string;
+  /** False means the streak is still alive but today hasn't counted yet. */
+  trained_today: boolean;
+}
+
+export interface ComparisonSession {
+  analysis_session_id: string;
+  video_session_id: string;
+  date: string;
+  rep_count: number;
+  passed: number;
+  failed: number;
+  pass_rate: number | null;
+  headline: string | null;
+  metrics: Record<string, number>;
+}
+
+export interface ComparisonDelta {
+  key: string;
+  label: string;
+  unit: string | null;
+  current: number;
+  previous: number;
+  best: number | null;
+  change: number;
+  direction: TrendDirection;
+  /** False when no rule governs this metric. Never colour those green - it
+   * would be asserting a direction nobody has defined. */
+  has_polarity: boolean;
+}
+
+export interface SessionComparison {
+  available: boolean;
+  exercise: string;
+  note: string | null;
+  /** Oldest first, ready to plot. */
+  sessions: ComparisonSession[];
+  current?: ComparisonSession | null;
+  previous?: ComparisonSession | null;
+  best?: ComparisonSession | null;
+  is_personal_best?: boolean;
+  deltas: ComparisonDelta[];
+}
+
+export type ReadinessVerdict = 'train' | 'modify' | 'rest';
+
+export interface ReadinessReason {
+  key: string;
+  verdict: ReadinessVerdict;
+  text: string;
+  evidence: Record<string, unknown>;
+}
+
+export interface Readiness {
+  available: boolean;
+  verdict: ReadinessVerdict | null;
+  headline: string;
+  /** Worst-first: reasons[0] is the one that decided the verdict. */
+  reasons: ReadinessReason[];
+  /** Signals the verdict actually read. */
+  inputs_used: string[];
+  /** Signals it could not read. Shown so "unknown" never reads as "fine". */
+  inputs_missing: string[];
+  risk_score: number | null;
+  disclaimer: string;
 }
 
 export interface CoachMessage {
@@ -615,6 +854,37 @@ export class ApiClient {
     });
   }
 
+  static getInjuryRisk() {
+    return request<RiskAssessment>('/athletes/me/injury-risk');
+  }
+
+  /** "Should I train today?" - works with no wearable connected. Sends the
+   * browser timezone: consecutive training days are a question about the
+   * athlete's local calendar, not the server's. */
+  static getReadiness() {
+    const tz =
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+    return request<Readiness>(`/athletes/me/readiness${tz ? `?tz=${encodeURIComponent(tz)}` : ''}`);
+  }
+
+  /** This session vs previous vs personal best, for one exercise. */
+  static getSessionComparison(exercise: string) {
+    return request<SessionComparison>(`/athletes/me/comparison/${exercise}`);
+  }
+
+  /** Exercises this athlete actually has sessions for. */
+  static listMyExercises() {
+    return request<string[]>('/athletes/me/exercises');
+  }
+
+  /** Streaks are a question about the athlete's local calendar day, so the
+   * browser's timezone is passed rather than assuming UTC. */
+  static getStreaks() {
+    const tz =
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+    return request<Streaks>(`/athletes/me/streaks${tz ? `?tz=${encodeURIComponent(tz)}` : ''}`);
+  }
+
   static generateSportSuggestion() {
     return request<BiometricProfile>('/athletes/me/sport-suggestion', {method: 'POST'});
   }
@@ -640,6 +910,16 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify({sport})
     });
+  }
+
+  static listTrainingPlans() {
+    return request<TrainingPlan[]>('/training-plans');
+  }
+
+  /** Server-side source of truth for "my plan" - replaces remembering an id
+   * in localStorage, which lost the plan on logout or in another browser. */
+  static getCurrentTrainingPlan() {
+    return request<TrainingPlan | null>('/training-plans/current');
   }
 
   static getTrainingPlan(id: string) {
@@ -670,6 +950,14 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(sport ? {sport} : {})
     });
+  }
+
+  static listNutrition() {
+    return request<NutritionRecommendation[]>('/nutrition');
+  }
+
+  static getCurrentNutrition() {
+    return request<NutritionRecommendation | null>('/nutrition/current');
   }
 
   static getNutrition(id: string) {
@@ -747,6 +1035,36 @@ export class ApiClient {
 
   static getReport(id: string) {
     return request<AnalysisReport>(`/videos/${id}/report`);
+  }
+
+  /** Per-frame skeleton for replay. 404s when the video has no pose frames
+   * (older analyses, or a run that never got that far). */
+  static getPoseSequence(id: string) {
+    return request<PoseSequence>(`/videos/${id}/pose-sequence`);
+  }
+
+  /** Downloads the shareable PDF. `<a download>` can't send an Authorization
+   * header, so this fetches the bytes and hands the browser a blob URL. */
+  static async downloadReportPdf(id: string): Promise<void> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const res = await fetch(`${API_BASE}/videos/${id}/report.pdf`, {
+      headers: token ? {Authorization: `Bearer ${token}`} : {}
+    });
+    if (!res.ok) throw new Error('Failed to generate the PDF report');
+
+    const disposition = res.headers.get('content-disposition') ?? '';
+    const match = /filename="([^"]+)"/.exec(disposition);
+    const url = URL.createObjectURL(await res.blob());
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] ?? `ada2y-report-${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   static getEvidenceUrl(id: string, filename: string) {
