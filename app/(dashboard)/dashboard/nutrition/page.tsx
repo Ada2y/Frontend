@@ -542,9 +542,7 @@ export default function NutritionPage() {
   const [conditions, setConditions] = useState<AthleteMedicalCondition[]>([]);
   const [bodyMetrics, setBodyMetrics] = useState<BodyMetricEntry[]>([]);
   const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
-  const [loading, setLoading] = useState(
-    () => typeof window !== 'undefined' && !!localStorage.getItem(LAST_NUTRITION_ID_KEY)
-  );
+  const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -556,14 +554,13 @@ export default function NutritionPage() {
     const savedId =
       typeof window !== 'undefined' ? localStorage.getItem(LAST_NUTRITION_ID_KEY) : null;
     if (savedId) {
+      setLoading(true);
       ApiClient.getNutrition(savedId)
         .then((rec) => !cancelled && setRecommendation(rec))
         .catch(() => {
           if (typeof window !== 'undefined') localStorage.removeItem(LAST_NUTRITION_ID_KEY);
         })
         .finally(() => !cancelled && setLoading(false));
-    } else {
-      setLoading(false);
     }
     ApiClient.listNutrition()
       .then((items) => !cancelled && setHistory(items))

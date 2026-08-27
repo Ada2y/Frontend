@@ -83,12 +83,20 @@ function bodyMetricsChartData(metrics: BodyMetricEntry[]) {
 const axisStyle = {fontSize: 12, fill: 'var(--muted-foreground)' as const};
 const gridStyle = {strokeDasharray: '3 3', stroke: 'var(--border)' as const};
 
-function CustomTooltip({active, payload, label}: any) {
+function CustomTooltip({
+  active,
+  payload,
+  label
+}: {
+  active?: boolean;
+  payload?: Array<{color: string; name: string; value: number}>;
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-md">
-      <p className="font-medium text-foreground">{label}</p>
-      {payload.map((p: any, i: number) => (
+      <p className="font-medium text-foreground">{String(label)}</p>
+      {payload.map((p, i) => (
         <p key={i} style={{color: p.color}} className="text-sm">
           {p.name}: {p.value}
         </p>
