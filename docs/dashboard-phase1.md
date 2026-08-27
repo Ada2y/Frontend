@@ -13,6 +13,7 @@ Transformed the dashboard from a basic text-only layout into a polished, data-dr
 ### Overview Page (`/dashboard`)
 
 **Before:**
+
 - 3 identical text-only Cards (Training Plan, Nutrition, Recent Videos)
 - No stats, no data visualization
 - Loading state: blank page (`return null`)
@@ -20,6 +21,7 @@ Transformed the dashboard from a basic text-only layout into a polished, data-dr
 - No body metrics or injury tracking
 
 **After:**
+
 - Time-of-day greeting with user's first name
 - 4 KPI stat cards (Sessions, Form Score, This Week, Nutrition) with real data
 - 2 additional stat cards (Body Metrics, Injury Status)
@@ -51,15 +53,16 @@ Transformed the dashboard from a basic text-only layout into a polished, data-dr
 
 Reusable KPI card with colored accent line.
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `icon` | `LucideIcon` | Icon in the tinted badge |
-| `label` | `string` | Uppercase text above the value |
-| `value` | `string \| number` | Large bold value |
-| `description` | `string` | Optional subtitle |
-| `accentColor` | `string` | Hex color for accent line + icon tint |
+| Prop          | Type               | Description                           |
+| ------------- | ------------------ | ------------------------------------- |
+| `icon`        | `LucideIcon`       | Icon in the tinted badge              |
+| `label`       | `string`           | Uppercase text above the value        |
+| `value`       | `string \| number` | Large bold value                      |
+| `description` | `string`           | Optional subtitle                     |
+| `accentColor` | `string`           | Hex color for accent line + icon tint |
 
 **Styling:**
+
 - `text-4xl font-bold` value, `text-sm` label/description
 - Icon: `size-12 rounded-xl` with `bg-{color}/10`
 - Top accent: `h-[3px]` solid line
@@ -71,12 +74,12 @@ Reusable KPI card with colored accent line.
 
 4-column shortcut row linking to key pages.
 
-| Action | Route | Color |
-|--------|-------|-------|
-| Upload Video | `/dashboard/videos` | Blue |
-| View Reports | `/dashboard/biomechanics` | Primary (indigo) |
-| Training Plan | `/dashboard/training-plan` | Amber |
-| Nutrition | `/dashboard/nutrition` | Green |
+| Action        | Route                      | Color            |
+| ------------- | -------------------------- | ---------------- |
+| Upload Video  | `/dashboard/videos`        | Blue             |
+| View Reports  | `/dashboard/biomechanics`  | Primary (indigo) |
+| Training Plan | `/dashboard/training-plan` | Amber            |
+| Nutrition     | `/dashboard/nutrition`     | Green            |
 
 **Layout:** 4-col desktop, 2-col mobile. Icon `size-11`, label `text-base`.
 
@@ -86,13 +89,13 @@ Reusable KPI card with colored accent line.
 
 Timestamped list of recent video events (max 6).
 
-| Field | Source |
-|-------|--------|
-| Icon | `CheckCircle` (green) / `AlertTriangle` (amber) / `Upload` (gray) |
-| Title | `video.original_filename` |
-| Detail | `"squat · 2/3 passed"` |
-| Link | `/dashboard/biomechanics/{id}` if completed |
-| Time | Relative: `5m ago`, `2h ago`, `3d ago` |
+| Field  | Source                                                            |
+| ------ | ----------------------------------------------------------------- |
+| Icon   | `CheckCircle` (green) / `AlertTriangle` (amber) / `Upload` (gray) |
+| Title  | `video.original_filename`                                         |
+| Detail | `"squat · 2/3 passed"`                                            |
+| Link   | `/dashboard/biomechanics/{id}` if completed                       |
+| Time   | Relative: `5m ago`, `2h ago`, `3d ago`                            |
 
 ---
 
@@ -111,12 +114,14 @@ Animated loading placeholder matching StatCard dimensions.
 All data from `ApiClient.listVideos()` — no mock data.
 
 ### Sessions Analyzed
+
 ```typescript
-completedVideos = videos.filter(v => v.status === 'completed')
-value = completedVideos.length
+completedVideos = videos.filter((v) => v.status === 'completed');
+value = completedVideos.length;
 ```
 
 ### Form Score
+
 ```typescript
 totalPassed = sum of v.passed
 totalChecks = sum of (v.passed + v.failed)
@@ -127,33 +132,37 @@ formScore = round((totalPassed / totalChecks) * 100)
 **Seed data example:** Video 1 (1/2 passed = 50%) + Video 2 (2/2 passed = 100%) → formScore = 75%
 
 ### Sessions This Week
+
 ```typescript
 weekAgo = now - 7 days
 sessionsThisWeek = completedVideos.filter(v => v.created_at > weekAgo).length
 ```
 
 ### Nutrition
+
 ```typescript
-value = nutrition ? 'Active' : 'None'
+value = nutrition ? 'Active' : 'None';
 ```
 
 ### Body Metrics
+
 ```typescript
-latest = bodyMetrics[bodyMetrics.length - 1]
-value = `${latest.weight_kg}kg / ${latest.height_cm}cm / BMI ${latest.bmi}`
-description = `Recorded ${new Date(latest.recorded_at).toLocaleDateString()}`
+latest = bodyMetrics[bodyMetrics.length - 1];
+value = `${latest.weight_kg}kg / ${latest.height_cm}cm / BMI ${latest.bmi}`;
+description = `Recorded ${new Date(latest.recorded_at).toLocaleDateString()}`;
 // Empty: value = "—", description = "No data yet"
 ```
 
 ### Injury Status
+
 ```typescript
-activeInjuries = injuries.filter(i => !i.recovered_at)
-count = activeInjuries.length
-value = count === 0 ? 'None' : `${count} active`
+activeInjuries = injuries.filter((i) => !i.recovered_at);
+count = activeInjuries.length;
+value = count === 0 ? 'None' : `${count} active`;
 // 1 injury: description = "Knee — high"
 // 2+ injuries: description = "Knee, Shoulder" or "Knee, Shoulder +1 more"
 // 0 injuries: description = "You're all clear"
-accentColor = count === 0 ? green : highCount > 0 ? red : amber
+accentColor = count === 0 ? green : highCount > 0 ? red : amber;
 ```
 
 ---
@@ -161,11 +170,13 @@ accentColor = count === 0 ? green : highCount > 0 ? red : amber
 ## GIF Reference Feature
 
 **Files changed:**
+
 - `public/exercise-gifs/` — 6 self-hosted GIFs (squat, deadlift, bench_press, push_up, shoulder_press, lat_pulldown)
 - `lib/api.ts` — added `exerciseGifUrl(exerciseName)` helper
 - `app/(dashboard)/biomechanics/[id]/page.tsx` — GIF card rendered below analysis section
 
 **How it works:**
+
 1. After analysis loads, `exerciseGifUrl(exercise)` is called
 2. If a matching GIF exists, a card with the correct-form image is shown below the analysis
 3. No external CDN calls — all assets self-hosted in `public/exercise-gifs/`
@@ -191,39 +202,47 @@ accentColor = count === 0 ? green : highCount > 0 ? red : amber
 ## Backend Setup
 
 ### Database
+
 - **Provider:** Supabase PostgreSQL (eu-central-1 pooler)
 - **ORM:** SQLAlchemy + Alembic
 - **Env file:** `.env` (was originally `env` without dot — renamed)
 
 ### Alembic Fix
+
 `env.py` had `config.set_main_option()` which breaks on `%` in DB URLs:
+
 ```python
 value = raw_value.replace("%", "%%")  # configparser interpolation fix
 ```
 
 ### Auth Fix
+
 `passlib 1.7.4` incompatible with `bcrypt 5.0.0` — fixed by pinning `bcrypt==4.1.3`.
 
 ### Login Format
+
 OAuth2 form-encoded, NOT JSON:
+
 ```
 Content-Type: application/x-www-form-urlencoded
 Body: username=athlete@ada2y.dev&password=Ada2yDev!2026
 ```
 
 ### Seed Accounts
+
 Created via `python scripts/seed_dev_accounts.py`:
 
-| Email | Password | Role | Status |
-|-------|----------|------|--------|
-| athlete@ada2y.dev | Ada2yDev!2026 | athlete | ACTIVE |
-| coach@ada2y.dev | Ada2yDev!2026 | coach | ACTIVE |
+| Email              | Password      | Role     | Status |
+| ------------------ | ------------- | -------- | ------ |
+| athlete@ada2y.dev  | Ada2yDev!2026 | athlete  | ACTIVE |
+| coach@ada2y.dev    | Ada2yDev!2026 | coach    | ACTIVE |
 | reviewer@ada2y.dev | Ada2yDev!2026 | reviewer | ACTIVE |
-| admin@ada2y.dev | Ada2yDev!2026 | admin | ACTIVE |
+| admin@ada2y.dev    | Ada2yDev!2026 | admin    | ACTIVE |
 
 **Note:** Accounts need `status=ACTIVE` to bypass email verification.
 
 ### Running
+
 ```bash
 # Backend (port 8001 — port 8000 was occupied)
 cd ada2y-backend
@@ -235,7 +254,9 @@ npm run dev
 ```
 
 ### Frontend Env
+
 `.env.local`:
+
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 ```
@@ -246,38 +267,38 @@ NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 
 All text bumped one size from initial implementation:
 
-| Element | Size |
-|---------|------|
-| Page heading | `text-2xl` |
-| Page subtitle | `text-base` |
-| Card label (uppercase) | `text-sm` |
-| Card value | `text-4xl` |
-| Card description | `text-sm` |
-| Card icon | `size-12` / `size-6` |
-| Quick action label | `text-base` |
-| Activity feed title | `text-base` |
-| Activity feed detail | `text-sm` |
-| Skeleton placeholders | `h-4` / `h-10` |
+| Element                | Size                 |
+| ---------------------- | -------------------- |
+| Page heading           | `text-2xl`           |
+| Page subtitle          | `text-base`          |
+| Card label (uppercase) | `text-sm`            |
+| Card value             | `text-4xl`           |
+| Card description       | `text-sm`            |
+| Card icon              | `size-12` / `size-6` |
+| Quick action label     | `text-base`          |
+| Activity feed title    | `text-base`          |
+| Activity feed detail   | `text-sm`            |
+| Skeleton placeholders  | `h-4` / `h-10`       |
 
 ---
 
 ## File Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `_components/StatCard.tsx` | Created | Reusable KPI card |
-| `_components/QuickActions.tsx` | Created | Shortcut row |
-| `_components/ActivityFeed.tsx` | Created | Recent activity list |
-| `_components/Sidebar.tsx` | Modified | Sticky + scroll fix |
-| `app/(dashboard)/dashboard/page.tsx` | Modified | Full overview redesign |
+| File                                         | Action   | Purpose                      |
+| -------------------------------------------- | -------- | ---------------------------- |
+| `_components/StatCard.tsx`                   | Created  | Reusable KPI card            |
+| `_components/QuickActions.tsx`               | Created  | Shortcut row                 |
+| `_components/ActivityFeed.tsx`               | Created  | Recent activity list         |
+| `_components/Sidebar.tsx`                    | Modified | Sticky + scroll fix          |
+| `app/(dashboard)/dashboard/page.tsx`         | Modified | Full overview redesign       |
 | `app/(dashboard)/biomechanics/[id]/page.tsx` | Modified | GIF reference below analysis |
-| `lib/api.ts` | Modified | `exerciseGifUrl()` helper |
-| `public/exercise-gifs/*` | Created | 6 self-hosted GIFs |
-| `docs/dashboard-phase1.md` | Created | This document |
-| `.env.local` | Created | API URL config |
-| `ada2y-backend/.env` | Created | Supabase + secret key |
-| `ada2y-backend/app/db/migrations/env.py` | Modified | `%` escaping fix |
-| `ada2y-backend/scripts/seed_dev_accounts.py` | Created | Dev account seeder |
+| `lib/api.ts`                                 | Modified | `exerciseGifUrl()` helper    |
+| `public/exercise-gifs/*`                     | Created  | 6 self-hosted GIFs           |
+| `docs/dashboard-phase1.md`                   | Created  | This document                |
+| `.env.local`                                 | Created  | API URL config               |
+| `ada2y-backend/.env`                         | Created  | Supabase + secret key        |
+| `ada2y-backend/app/db/migrations/env.py`     | Modified | `%` escaping fix             |
+| `ada2y-backend/scripts/seed_dev_accounts.py` | Created  | Dev account seeder           |
 
 ---
 
