@@ -38,10 +38,18 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="selection:bg-foreground/10 selection:text-foreground bg-background">
-      <main className="bg-background">
-        <div className="grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6">
-          <div className="m-auto w-full max-w-72 self-center text-center">
+    <div className="theme-light selection:bg-foreground/10 selection:text-foreground bg-background">
+      <main className="relative bg-background">
+        {/* One indigo wash off the top edge - the logo's own hue - so the white
+            form card has something to lift off of. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(80rem_45rem_at_50%_-15%,rgba(94,106,210,0.12),transparent_65%)]"
+        />
+        {/* pt clears the fixed floating header, which otherwise sits on top of
+            the logo above the form. */}
+        <div className="relative grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6 pt-20 lg:pt-24">
+          <div className="m-auto w-full max-w-sm self-center text-center">
             <Link aria-label="go home" className="mx-auto flex size-10 *:m-auto" href="/">
               <svg
                 className="size-7"
@@ -70,37 +78,41 @@ function VerifyEmailContent() {
                 </defs>
               </svg>
             </Link>
-            <h1 className="mb-10 mt-6 text-xl font-semibold">Verify your email</h1>
-            <div className="space-y-4">
-              {status === 'loading' && (
-                <p className="text-muted-foreground text-sm">Verifying your email...</p>
-              )}
-              {status === 'success' && (
-                <>
-                  <div className="rounded-md bg-success-bg px-3 py-2 text-sm text-success dark:text-green-400">
-                    {message}
-                  </div>
-                  <Link
-                    className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
-                    href="/login"
-                  >
-                    Go to login
-                  </Link>
-                </>
-              )}
-              {status === 'error' && (
-                <>
-                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {message}
-                  </div>
-                  <Link
-                    className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
-                    href="/login"
-                  >
-                    Back to login
-                  </Link>
-                </>
-              )}
+            <h1 className="mb-6 mt-5 text-xl font-semibold tracking-tight text-foreground">
+              Verify your email
+            </h1>
+            <div className="rounded-2xl bg-card p-6 shadow-[0_1px_2px_rgba(8,9,10,0.04),0_12px_32px_-12px_rgba(8,9,10,0.16)] ring-1 ring-foreground/[0.06] sm:p-8">
+              <div className="space-y-4">
+                {status === 'loading' && (
+                  <p className="text-muted-foreground text-sm">Verifying your email...</p>
+                )}
+                {status === 'success' && (
+                  <>
+                    <div className="rounded-md bg-success-bg px-3 py-2 text-sm text-success">
+                      {message}
+                    </div>
+                    <Link
+                      className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                      href="/login"
+                    >
+                      Go to login
+                    </Link>
+                  </>
+                )}
+                {status === 'error' && (
+                  <>
+                    <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {message}
+                    </div>
+                    <Link
+                      className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                      href="/login"
+                    >
+                      Back to login
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

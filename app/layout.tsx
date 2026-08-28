@@ -56,7 +56,9 @@ export default function RootLayout({
         <AuthProvider>
           <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         </AuthProvider>
-        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+        {/* hl=en pins Google Identity Services to English; without it the
+            sign-in button and One Tap follow the browser's UI language. */}
+        <Script src="https://accounts.google.com/gsi/client?hl=en" strategy="afterInteractive" />
       </body>
     </html>
   );

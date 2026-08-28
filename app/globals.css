@@ -50,7 +50,13 @@
   --radius-4xl: 32px;
 }
 
-:root {
+/* Light palette. Also exposed as a `.theme-light` class so a subtree (the
+   auth pages, which are light-mode only) can opt out of the dark theme: the
+   tokens are custom properties, so redefining them on a wrapper element beats
+   the values inherited from :root[data-theme='dark']. */
+:root,
+.theme-light {
+  color-scheme: light;
   --background: #fafafa;
   --foreground: #08090a;
   --card: #ffffff;
@@ -194,6 +200,14 @@
   --border-illustration: #2a2d32;
 
   color-scheme: dark;
+}
+
+/* `body` applies text-foreground, so `color` is computed once against the
+   body's tokens - in dark mode that is #f2f3f5, and every descendant inherits
+   that white regardless of the tokens .theme-light redefines. Re-declaring
+   color here makes the subtree resolve against the light token instead. */
+.theme-light {
+  color: var(--foreground);
 }
 
 @utility mask-x-from-45 {
