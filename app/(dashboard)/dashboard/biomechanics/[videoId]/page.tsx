@@ -21,6 +21,7 @@ import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
 import CorrectionCanvas from '@/app/(dashboard)/_components/CorrectionCanvas';
+import AthletePicker from '@/app/(dashboard)/_components/AthletePicker';
 import EvidenceNote from '@/app/(dashboard)/_components/EvidenceNote';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
 import {RepBreakdownChart, PassFailPieChart} from '@/app/(dashboard)/_components/ReportCharts';
@@ -579,6 +580,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           )}
         </CardContent>
       </Card>
+
+      {/* Renders itself away unless the video has more than one person. */}
+      <AthletePicker
+        videoId={videoId}
+        athletes={report.input.athletes ?? []}
+        selectedTrackId={report.input.selected_track_id ?? null}
+        wasRequested={report.input.selection_was_requested ?? false}
+      />
 
       <EvidenceNote evidence={report.input.evidence} />
 

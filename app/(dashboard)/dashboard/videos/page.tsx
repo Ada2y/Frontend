@@ -309,12 +309,15 @@ function UploadSection({
   sport,
   exercise,
   onSportChange,
-  onExerciseChange
+  onExerciseChange,
+  onUploaded
 }: {
   sport: VideoSport;
   exercise: VideoExercise | '';
   onSportChange: (s: VideoSport) => void;
   onExerciseChange: (e: VideoExercise | '') => void;
+  /** Refetch the list so the new row appears and polling picks it up. */
+  onUploaded: () => void;
 }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -325,7 +328,15 @@ function UploadSection({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('video/')) return;
+    // Browsers report an empty or non-video MIME type for some .mov/.avi
+    // files. Rejecting silently looked identical to the click doing nothing,
+    // so fall back to the extension and say so when we really can't take it.
+    const looksLikeVideo =
+      file.type.startsWith('video/') || /\.(mp4|mov|avi|m4v|webm|mkv)$/i.test(file.name);
+    if (!looksLikeVideo) {
+      setUploadError('That file is not a video. Upload an MP4, MOV or AVI.');
+      return;
+    }
     setSelectedFile(file);
     setUploadComplete(false);
     setUploadError(null);
@@ -371,7 +382,10 @@ function UploadSection({
       setUploadComplete(true);
       setSelectedFile(null);
       setTimeout(() => setUploadComplete(false), 3000);
-      window.location.reload();
+      // Refetch rather than window.location.reload(): a full reload raced the
+      // success message and dropped the polling that moves the new row from
+      // "queued" to "completed".
+      onUploaded();
     } catch (err) {
       setUploading(false);
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -449,7 +463,12 @@ function UploadSection({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
+          // Only while empty. Once a file is chosen the card below lives
+          // inside this div, and re-opening the picker on every click there
+          // is what made it "keep asking for the file again".
+          onClick={() => {
+            if (!selectedFile) inputRef.current?.click();
+          }}
           className={`mt-5 flex cursor-pointer flex-col items-center gap-4 rounded-2xl border-2 border-dashed px-6 py-16 text-center transition-all duration-200 ${
             isDragging
               ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
@@ -482,7 +501,9 @@ function UploadSection({
           />
 
           {selectedFile && (
-            <div className="flex flex-col gap-3 w-full">
+            // Belt and braces: the card is a child of the click-to-browse
+            // dropzone, so its own clicks must not reach it.
+            <div className="flex w-full flex-col gap-3" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <Video className="size-4 shrink-0 text-muted-foreground" />
@@ -732,6 +753,7 @@ export default function VideosPage() {
         exercise={exercise}
         onSportChange={setSport}
         onExerciseChange={setExercise}
+        onUploaded={loadVideos}
       />
 
       {/* Video list */}
