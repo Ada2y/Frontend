@@ -69,9 +69,9 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Review Queue</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold text-foreground">Review queue</h1>
+        <p className="text-base text-muted-foreground">
           Flagged clinically sensitive recommendations awaiting human sign-off.
         </p>
       </div>
@@ -101,7 +101,11 @@ export default function ReviewQueuePage() {
         </button>
       </div>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && (
+        <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

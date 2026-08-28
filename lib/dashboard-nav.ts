@@ -60,12 +60,30 @@ export const dashboardNavItems: DashboardNavItem[] = [
     icon: BookOpen,
     roles: PLATFORM_ADMIN_ONLY
   }
-  // Team screens (US-C01-C05) and Admin Users/Knowledge Base (US-AD01/AD02)
-  // run on mock data (lib/mocks/team-service.ts, lib/mocks/admin-service.ts)
-  // until their backend endpoints ship - see Ada2y_Backend_AI_TODO.md #6/#7.
+  // Team and Admin screens are wired to the real API (/coach/* and /admin/*).
+  // The few coach features with no endpoint - invites, private notes, the team
+  // plan builder, body-part risk - still read lib/mocks/team-service.ts and are
+  // labelled with <MockBadge /> wherever they render.
 ];
 
 export function navItemsForRole(role: string | undefined): DashboardNavItem[] {
   if (!role) return dashboardNavItems.filter((item) => !item.roles);
   return dashboardNavItems.filter((item) => !item.roles || item.roles.includes(role));
+}
+
+/** Roles allowed on a dashboard path, derived from the nav table so the guard
+ * and the sidebar can never disagree about who may see a page. The longest
+ * matching href wins, so `/dashboard/admin/users` resolves to the Users entry
+ * rather than the catch-all `/dashboard` overview. */
+export function allowedRolesForPath(pathname: string): string[] | undefined {
+  const match = dashboardNavItems
+    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
+  // A path under /dashboard/admin with no nav entry (a future admin page, or
+  // the bare /dashboard/admin segment) must not fall through to the unguarded
+  // overview entry - default it closed.
+  if (!match?.roles && pathname.startsWith('/dashboard/admin')) return PLATFORM_ADMIN_ONLY;
+
+  return match?.roles;
 }
