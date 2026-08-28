@@ -481,6 +481,17 @@ export interface Evidence {
   limitations: string[];
 }
 
+/** One person the detector found. Offered for selection when a video has
+ * more than one, because the automatic pick scores frames x box area and
+ * loses predictably — a standing spotter beats a lifter on a bench. */
+export interface AthleteCandidate {
+  track_id: number;
+  frames: number;
+  coverage: number;
+  thumbnail: string | null;
+  bbox: number[];
+}
+
 export interface TrackingQuality {
   reliable: boolean;
   bone_length_cv: number | null;
@@ -613,6 +624,10 @@ export interface AnalysisReport {
     skip_reason: string | null;
     tracking: TrackingQuality | null;
     evidence: Evidence | null;
+    athletes: AthleteCandidate[];
+    selected_track_id: number | null;
+    /** True when this analysis used the athlete's own pick, not the auto one. */
+    selection_was_requested: boolean;
   };
   segmentation: {mode: string; count: number};
   summary: {
@@ -1327,6 +1342,14 @@ export class ApiClient {
     } finally {
       URL.revokeObjectURL(url);
     }
+  }
+
+  /** "That's not me" — re-run the analysis on the chosen person. */
+  static selectAthlete(id: string, trackId: number) {
+    return request<{status: string; track_id: number}>(`/videos/${id}/select-athlete`, {
+      method: 'POST',
+      body: JSON.stringify({track_id: trackId})
+    });
   }
 
   static getEvidenceUrl(id: string, filename: string) {
