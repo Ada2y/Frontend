@@ -239,38 +239,87 @@ export type VideoExercise = GymExercise | FootballExercise;
 /** `view` mirrors the backend's VIEW_GUIDANCE (app/ai/cv_pipeline/constants.py)
  * word-for-word - shown to the athlete before they film, since a wrong-angle
  * video completes with the analysis skipped rather than failing outright. */
-export const GYM_EXERCISES: {value: GymExercise; label: string; view: string}[] = [
-  {value: 'squat', label: 'Squat', view: 'Film from the side, with your whole body in frame.'},
+export type CameraAngle = 'side' | 'diagonal' | 'front';
+
+export const GYM_EXERCISES: {
+  value: GymExercise;
+  label: string;
+  view: string;
+  angle: CameraAngle;
+}[] = [
+  {
+    value: 'squat',
+    label: 'Squat',
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
+  },
   {
     value: 'deadlift',
     label: 'Deadlift',
-    view: 'Film from the side, with your whole body in frame.'
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
   },
   {
     value: 'bench_press',
     label: 'Bench Press',
-    view: 'Film from the side, with your whole body in frame.'
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
   },
-  {value: 'push_up', label: 'Push-up', view: 'Film from the side, with your whole body in frame.'},
+  {
+    value: 'push_up',
+    label: 'Push-up',
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
+  },
   {
     value: 'shoulder_press',
     label: 'Shoulder Press',
-    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.'
+    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.',
+    angle: 'diagonal'
   },
   {
     value: 'lat_pulldown',
     label: 'Lat Pulldown',
-    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.'
+    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.',
+    angle: 'diagonal'
   }
 ];
 
-export const FOOTBALL_EXERCISES: {value: FootballExercise; label: string; view: string}[] = [
+export const FOOTBALL_EXERCISES: {
+  value: FootballExercise;
+  label: string;
+  view: string;
+  angle: CameraAngle;
+}[] = [
   {
     value: 'landing',
     label: 'Jump Landing',
-    view: 'Film from the side, with the full jump-landing motion in frame.'
+    view: 'Film from the side, with the full jump-landing motion in frame.',
+    angle: 'side'
   }
 ];
+
+/** Self-hosted camera-angle demo clips under /public/camera-guides. Shows the
+ * athlete filmed from the exact angle the analyser needs, so the user can copy
+ * the framing instead of decoding a written instruction. Gym exercises only. */
+const CAMERA_GUIDE_EXERCISES: VideoExercise[] = [
+  'squat',
+  'deadlift',
+  'bench_press',
+  'push_up',
+  'shoulder_press',
+  'lat_pulldown'
+];
+
+export function cameraGuideClip(
+  exercise: VideoExercise | null | undefined
+): {video: string; poster: string} | null {
+  if (!exercise || !CAMERA_GUIDE_EXERCISES.includes(exercise)) return null;
+  return {
+    video: `/camera-guides/${exercise}.mp4`,
+    poster: `/camera-guides/${exercise}.jpg`
+  };
+}
 
 /** Self-hosted correct-form GIFs under /public/exercise-gifs, one per gym exercise. */
 export function exerciseGifUrl(exercise: VideoExercise | null | undefined): string | null {
