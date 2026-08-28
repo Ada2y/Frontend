@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle,
+  CheckCircle2,
   Download,
   HelpCircle,
   Info,
@@ -69,6 +70,9 @@ function SeverityChip({severity}: {severity: CheckSeverity}) {
 
 function OutcomeIcon({outcome}: {outcome: CheckResult['outcome']}) {
   if (outcome === 'pass') return <CheckCircle className="size-4 shrink-0 text-success" />;
+  // Borderline counts as correct, so it gets a tick - a warning triangle here
+  // would tell the athlete they got it wrong when they essentially got it right.
+  if (outcome === 'borderline') return <CheckCircle2 className="size-4 shrink-0 text-info" />;
   if (outcome === 'fail') return <AlertTriangle className="size-4 shrink-0 text-danger" />;
   return <HelpCircle className="size-4 shrink-0 text-muted-foreground" />;
 }
@@ -438,6 +442,9 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           )}
           <div className="flex flex-wrap gap-4 text-sm">
             <span className="text-success">{summary.passed} passed</span>
+            {summary.borderline > 0 && (
+              <span className="text-info">{summary.borderline} of them close</span>
+            )}
             <span className="text-danger">{summary.failed} failed</span>
             <span className="text-muted-foreground">{summary.not_assessable} not assessable</span>
             <span className="text-muted-foreground">{report.segmentation.count} reps detected</span>
@@ -496,6 +503,7 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
             <Accordion>
               {report.reps.map((rep) => {
                 const repFailed = rep.checks.some((c) => c.outcome === 'fail');
+                const repClose = !repFailed && rep.checks.some((c) => c.outcome === 'borderline');
                 return (
                   <AccordionItem key={rep.index} value={`rep-${rep.index}`}>
                     <AccordionTrigger>
@@ -507,7 +515,12 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
                         {repFailed ? (
                           <AlertTriangle className="size-3.5 shrink-0 text-danger" />
                         ) : (
-                          <CheckCircle className="size-3.5 shrink-0 text-success" />
+                          <CheckCircle
+                            className={cn(
+                              'size-3.5 shrink-0',
+                              repClose ? 'text-info' : 'text-success'
+                            )}
+                          />
                         )}
                         <span className="font-medium">Rep {rep.index + 1}</span>
                         <span className="text-xs text-muted-foreground">
@@ -516,7 +529,9 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
                                 .filter((c) => c.outcome === 'fail')
                                 .map((c) => c.label ?? c.check_id.replace(/_/g, ' '))
                                 .join(', ')
-                            : 'all checks passed'}
+                            : repClose
+                              ? 'all checks passed, some were close'
+                              : 'all checks passed'}
                         </span>
                       </span>
                     </AccordionTrigger>

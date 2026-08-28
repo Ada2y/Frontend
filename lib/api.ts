@@ -313,7 +313,11 @@ export interface VideoStatusOut {
   has_report: boolean;
 }
 
-export type CheckOutcome = 'pass' | 'fail' | 'not_assessable';
+/** Three states, not two. `borderline` missed its threshold by less than the
+ * tolerance for that feature and COUNTS AS CORRECT - it exists so a rep that
+ * is essentially right isn't reported with the same weight as one that is
+ * plainly wrong. It is included in `summary.passed`. */
+export type CheckOutcome = 'pass' | 'borderline' | 'fail' | 'not_assessable';
 export type CheckSeverity = 'info' | 'warn' | 'risk';
 
 export interface EvidenceClaim {
@@ -472,7 +476,10 @@ export interface AnalysisReport {
      * Branch on this, never on "0 failures". */
     assessable: boolean;
     total_checks: number;
+    /** Includes borderline. */
     passed: number;
+    /** Subset of `passed` that only just made it. */
+    borderline: number;
     failed: number;
     not_assessable: number;
     severity_counts: Record<string, number>;
