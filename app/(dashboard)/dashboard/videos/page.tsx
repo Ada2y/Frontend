@@ -21,8 +21,10 @@ import {Button} from '@/components/ui/button';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
 import {
   ApiClient,
+  cameraGuideClip,
   FOOTBALL_EXERCISES,
   GYM_EXERCISES,
+  type CameraAngle,
   type VideoExercise,
   type VideoListItem,
   type VideoSport,
@@ -39,7 +41,7 @@ const SPORT_OPTIONS: {value: VideoSport; label: string}[] = [
 
 const EXERCISE_OPTIONS_BY_SPORT: Record<
   VideoSport,
-  {value: VideoExercise; label: string; view: string}[]
+  {value: VideoExercise; label: string; view: string; angle: CameraAngle}[]
 > = {
   gym: GYM_EXERCISES,
   football: FOOTBALL_EXERCISES
@@ -127,6 +129,130 @@ const ALL_EXERCISES = [...GYM_EXERCISES, ...FOOTBALL_EXERCISES];
 function formatExercise(exercise: VideoExercise | null): string | null {
   if (!exercise) return null;
   return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
+}
+
+const ANGLE_CONFIG: Record<CameraAngle, {label: string; icon: string; color: string; tip: string}> =
+  {
+    side: {
+      label: 'Side View',
+      icon: '→',
+      color: 'bg-blue-500/10 text-blue-600 ring-blue-500/20',
+      tip: 'Stand perpendicular to the athlete. The camera should capture the full range of motion from the side.'
+    },
+    diagonal: {
+      label: '45° Diagonal',
+      icon: '↗',
+      color: 'bg-amber-500/10 text-amber-600 ring-amber-500/20',
+      tip: 'Position the camera at roughly a 45-degree angle. This captures both side and front details.'
+    },
+    front: {
+      label: 'Front View',
+      icon: '↑',
+      color: 'bg-green-500/10 text-green-600 ring-green-500/20',
+      tip: 'Face the athlete directly. Ensure the camera captures the full body from head to toe.'
+    }
+  };
+
+/** Placement instructions the demo clip cannot convey on its own (how far, how
+ * high, how many reps). Written as ordered steps because users follow a numbered
+ * list; the old unordered tip grid left them guessing at distances. */
+const ANGLE_STEPS: Record<CameraAngle, string[]> = {
+  side: [
+    'Stand your phone 2-3 steps to your left or right, facing you straight on.',
+    'Put it at hip height - on a bench, a bag or a tripod, not in someone’s hand.',
+    'Hold it landscape (sideways) so your head and feet both stay in frame.',
+    'Record 3-5 clean reps, then stop.'
+  ],
+  diagonal: [
+    'Stand your phone 2-3 steps away, halfway between your side and your front.',
+    'Put it at hip height - on a bench, a bag or a tripod, not in someone’s hand.',
+    'Hold it landscape (sideways) so your head and feet both stay in frame.',
+    'Record 3-5 clean reps, then stop.'
+  ],
+  front: [
+    'Stand your phone 2-3 steps directly in front of you, facing you.',
+    'Put it at hip height - on a bench, a bag or a tripod, not in someone’s hand.',
+    'Hold it landscape (sideways) so your head and feet both stay in frame.',
+    'Record 3-5 clean reps, then stop.'
+  ]
+};
+
+const FILMING_DOS = ['Whole body in frame, head to feet', 'Bright, even lighting'];
+const FILMING_DONTS = ['Phone held by hand (shaky)', 'Zoomed in or filmed from another angle'];
+
+/** The demo clip is the guide. Everything else is a caption for it: users copy
+ * framing they can see far more reliably than framing described in a sentence. */
+function CameraGuide({exercise, sport}: {exercise: VideoExercise; sport: VideoSport}) {
+  const opt = EXERCISE_OPTIONS_BY_SPORT[sport].find((o) => o.value === exercise);
+  if (!opt) return null;
+  const config = ANGLE_CONFIG[opt.angle];
+  const clip = cameraGuideClip(exercise);
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border border-border bg-muted/30">
+      <div className="flex flex-col gap-4 p-4 sm:flex-row">
+        {clip && (
+          <figure className="flex shrink-0 flex-col gap-1.5 sm:w-[22rem] lg:w-[28rem]">
+            <div className="overflow-hidden rounded-lg bg-black ring-1 ring-border">
+              <video
+                key={clip.video}
+                src={clip.video}
+                poster={clip.poster}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                className="aspect-video w-full object-cover"
+              />
+            </div>
+            <figcaption className="text-center text-xs font-medium text-muted-foreground">
+              Your video should look like this
+            </figcaption>
+          </figure>
+        )}
+
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-foreground">
+              How to film your {opt.label.toLowerCase()}
+            </p>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${config.color}`}
+            >
+              <span className="text-sm">{config.icon}</span>
+              {config.label}
+            </span>
+          </div>
+          <ol className="flex flex-col gap-1.5">
+            {ANGLE_STEPS[opt.angle].map((step, i) => (
+              <li key={step} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="mt-px flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-[10px] font-semibold text-foreground">
+                  {i + 1}
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-1.5 border-t border-border px-4 py-3 sm:grid-cols-2">
+        {FILMING_DOS.map((tip) => (
+          <div key={tip} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle className="mt-0.5 size-3 shrink-0 text-green-500" />
+            <span>{tip}</span>
+          </div>
+        ))}
+        {FILMING_DONTS.map((tip) => (
+          <div key={tip} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <X className="mt-0.5 size-3 shrink-0 text-red-500" />
+            <span>{tip}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** A video that finished processing but measured nothing (0 reps, wrong
@@ -437,12 +563,7 @@ function UploadSection({
           </label>
         </div>
 
-        {exercise && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Camera angle: </span>
-            {EXERCISE_OPTIONS_BY_SPORT[sport].find((opt) => opt.value === exercise)?.view}
-          </p>
-        )}
+        {exercise && <CameraGuide exercise={exercise} sport={sport} />}
 
         {/* Drop zone */}
         <div
