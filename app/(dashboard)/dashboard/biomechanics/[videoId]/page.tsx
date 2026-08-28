@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   BarChart3,
   CheckCircle,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Download,
@@ -16,12 +17,6 @@ import {
   Loader2,
   TrendingUp
 } from 'lucide-react';
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent
-} from '@/components/ui/accordion';
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
@@ -84,6 +79,9 @@ function SeverityChip({severity, size = 'sm'}: {severity: CheckSeverity; size?: 
 
 function OutcomeIcon({outcome}: {outcome: CheckResult['outcome']}) {
   if (outcome === 'pass') return <CheckCircle className="size-4 shrink-0 text-success" />;
+  // Borderline counts as correct, so it gets a tick - a warning triangle here
+  // would tell the athlete they got it wrong when they essentially got it right.
+  if (outcome === 'borderline') return <CheckCircle2 className="size-4 shrink-0 text-info" />;
   if (outcome === 'fail') return <AlertTriangle className="size-4 shrink-0 text-danger" />;
   return <HelpCircle className="size-4 shrink-0 text-muted-foreground" />;
 }
@@ -264,14 +262,24 @@ function RepAccordion({
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const repFailed = rep.checks.some((c) => c.outcome === 'fail');
-  const repPassed = rep.checks.filter((c) => c.outcome === 'pass').length;
+  // `borderline` counts as correct. Counting only `pass` made a rep with one
+  // pass and one borderline read "1/2 checks" while being styled as a full
+  // pass - contradicting itself in both directions.
+  const repPassed = rep.checks.filter(
+    (c) => c.outcome === 'pass' || c.outcome === 'borderline'
+  ).length;
+  const repClose = !repFailed && rep.checks.some((c) => c.outcome === 'borderline');
   const repTotal = rep.checks.length;
+  const failedLabels = rep.checks
+    .filter((c) => c.outcome === 'fail')
+    .map((c) => c.label ?? c.check_id.replace(/_/g, ' '));
 
   return (
     <div
-      className={`overflow-hidden rounded-xl ring-1 ring-foreground/10 border-l-4 ${
-        repFailed ? 'border-l-red-500' : 'border-l-green-500'
-      }`}
+      className={cn(
+        'overflow-hidden rounded-xl border-l-4 ring-1 ring-foreground/10',
+        repFailed ? 'border-l-red-500' : repClose ? 'border-l-info' : 'border-l-green-500'
+      )}
     >
       <button
         onClick={() => setOpen(!open)}
@@ -283,20 +291,30 @@ function RepAccordion({
           <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
         )}
         <div
-          className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-            repFailed ? 'bg-red-500/10' : 'bg-green-500/10'
-          }`}
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-lg',
+            repFailed ? 'bg-red-500/10' : repClose ? 'bg-info/10' : 'bg-green-500/10'
+          )}
         >
           {repFailed ? (
             <AlertTriangle className="size-4 text-red-500" />
           ) : (
-            <CheckCircle className="size-4 text-green-500" />
+            <CheckCircle className={cn('size-4', repClose ? 'text-info' : 'text-green-500')} />
           )}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <span className="text-base font-semibold text-foreground">Rep {rep.index + 1}</span>
+          {/* Naming the failed checks makes the list scannable without opening
+              anything - seven failing reps otherwise look identical. */}
+          <span className="ml-2 text-sm text-muted-foreground">
+            {repFailed
+              ? failedLabels.join(', ')
+              : repClose
+                ? 'all checks passed, some were close'
+                : 'all checks passed'}
+          </span>
         </div>
-        <span className="text-sm text-muted-foreground">
+        <span className="shrink-0 text-sm text-muted-foreground">
           {repPassed}/{repTotal} checks
         </span>
       </button>
@@ -542,6 +560,9 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           )}
           <div className="flex flex-wrap gap-4 text-sm">
             <span className="text-success">{summary.passed} passed</span>
+            {summary.borderline > 0 && (
+              <span className="text-info">{summary.borderline} of them close</span>
+            )}
             <span className="text-danger">{summary.failed} failed</span>
             <span className="text-muted-foreground">{summary.not_assessable} not assessable</span>
             <span className="text-muted-foreground">{report.segmentation.count} reps detected</span>
@@ -606,49 +627,15 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
           <CardHeader>
             <CardTitle className="text-base">Per-rep breakdown</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Accordion>
-              {report.reps.map((rep) => {
-                const repFailed = rep.checks.some((c) => c.outcome === 'fail');
-                return (
-                  <AccordionItem key={rep.index} value={`rep-${rep.index}`}>
-                    <AccordionTrigger>
-                      <span className="flex flex-wrap items-center gap-2">
-                        {repFailed ? (
-                          <AlertTriangle className="size-3.5 shrink-0 text-danger" />
-                        ) : (
-                          <CheckCircle className="size-3.5 shrink-0 text-success" />
-                        )}
-                        <span className="font-medium">Rep {rep.index + 1}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {repFailed
-                            ? rep.checks
-                                .filter((c) => c.outcome === 'fail')
-                                .map((c) => c.label ?? c.check_id.replace(/_/g, ' '))
-                                .join(', ')
-                            : 'all checks passed'}
-                        </span>
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="flex flex-col gap-3">
-                        {rep.checks.map((check) => (
-                          <CheckRow key={check.check_id} videoId={videoId} check={check} />
-                        ))}
-                        <details className="rounded-lg border border-border p-3">
-                          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                            Technical details
-                          </summary>
-                          <div className="mt-2">
-                            <MetricsTable rep={rep} />
-                          </div>
-                        </details>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
+          <CardContent className="flex flex-col gap-2">
+            {report.reps.map((rep) => (
+              <RepAccordion
+                key={rep.index}
+                videoId={videoId}
+                rep={rep}
+                defaultOpen={report.reps.length === 1}
+              />
+            ))}
           </CardContent>
         </Card>
       )}

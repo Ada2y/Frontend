@@ -3,7 +3,7 @@
 Branch: `feat/injury-screening-and-ux` (cut from `dev`)
 Companion backend branch: `feature/injury-screening-and-ux` on `Ada2y/ada2y-backend`
 
-12 commits. Added a test runner where there was none: **27 tests**, plus
+14 commits. Added a test runner where there was none: **27 tests**, plus
 `pnpm lint` clean with zero warnings and `pnpm build` clean.
 
 ---
@@ -82,7 +82,17 @@ Metrics with no governing rule render in neutral grey **and say why** — the
 backend flags `has_polarity: false`, so nothing is coloured as an improvement
 nobody defined.
 
-### 6. Evidence is visible
+### 6. Borderline reads as correct
+
+Checks arrive from the backend in three states now: pass / **borderline** /
+fail. Borderline missed its threshold by less than the tolerance for that
+feature and counts as correct, so it gets a tick rather than a warning
+triangle — a warning icon would tell the athlete they got it wrong when they
+essentially got it right. The summary reports how many of the passes were
+close, and a rep row reads _"all checks passed, some were close"_ rather than
+flattening the distinction away.
+
+### 7. Evidence is visible
 
 `EvidenceNote` renders what each analysis is allowed to claim, with **both
 sides of the literature at equal weight**. Collapsed by default: present and

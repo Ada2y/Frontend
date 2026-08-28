@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 .opencode.json
+# Local dev-server output. dev.log and dev-err.log were committed by
+# accident; nothing here should be tracked.
+*.log

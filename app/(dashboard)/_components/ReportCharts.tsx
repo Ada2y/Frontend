@@ -51,7 +51,13 @@ function CustomTooltip({
 
 export function RepBreakdownChart({report}: {report: AnalysisReport}) {
   const data = report.reps.map((rep) => {
-    const passed = rep.checks.filter((c) => c.outcome === 'pass').length;
+    // `borderline` counts as passed - it missed its threshold by less than the
+    // tolerance for that feature. Bucketing only the three original outcomes
+    // dropped it from the stack entirely, so a rep with one pass and one
+    // borderline drew a bar of height 1 for two checks.
+    const passed = rep.checks.filter(
+      (c) => c.outcome === 'pass' || c.outcome === 'borderline'
+    ).length;
     const failed = rep.checks.filter((c) => c.outcome === 'fail').length;
     const notAssessable = rep.checks.filter((c) => c.outcome === 'not_assessable').length;
     return {
@@ -114,6 +120,7 @@ const PIE_COLORS = [COLORS.green, COLORS.red, COLORS.gray];
 
 export function PassFailPieChart({report}: {report: AnalysisReport}) {
   const data = [
+    // summary.passed already includes borderline, so this needs no adjustment.
     {name: 'Passed', value: report.summary.passed},
     {name: 'Failed', value: report.summary.failed},
     {name: 'Not assessed', value: report.summary.not_assessable}

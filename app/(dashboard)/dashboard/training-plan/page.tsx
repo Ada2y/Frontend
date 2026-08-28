@@ -506,6 +506,41 @@ export default function TrainingPlanPage() {
               />
             </label>
           </div>
+
+          {/* perceived_exertion is the load proxy behind the injury-risk
+              workload factor, the training-load ratio and the "hard session
+              recently" readiness rule. Without a control the payload always
+              sent undefined and all three silently ran on the backend's
+              neutral fallback. Anchored, not a bare 1-10 slider: unlabelled
+              scales get answered inconsistently, which is worse than no data
+              for a ratio comparing an athlete against their own baseline. */}
+          <fieldset className="mt-4 flex flex-col gap-1.5 border-0 p-0">
+            <legend className="text-sm font-medium text-muted-foreground">How hard was it?</legend>
+            <div className="flex flex-wrap gap-1.5">
+              {RPE_SCALE.map((step) => (
+                <button
+                  key={step.value}
+                  type="button"
+                  onClick={() => setLogRpe(logRpe === String(step.value) ? '' : String(step.value))}
+                  aria-pressed={logRpe === String(step.value)}
+                  title={step.label}
+                  className={cn(
+                    'size-10 rounded-lg font-mono text-sm tabular-nums transition-colors',
+                    logRpe === String(step.value)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                  )}
+                >
+                  {step.value}
+                </button>
+              ))}
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {logRpe
+                ? RPE_SCALE.find((step) => String(step.value) === logRpe)?.label
+                : 'Optional, but it powers your readiness and injury-risk screening.'}
+            </span>
+          </fieldset>
           <div className="mt-4 flex items-center gap-3">
             <Button size="lg" onClick={handleLogSession} disabled={logging}>
               {logging ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
