@@ -12,13 +12,13 @@ export default function Sidebar() {
   const navItems = navItemsForRole(user?.role);
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">
+    <aside className="hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-card lg:sticky lg:top-0 lg:flex">
       <div className="flex h-14 items-center px-6">
         <Link href="/dashboard" className="text-base font-semibold tracking-tight text-foreground">
           Ada2y
         </Link>
       </div>
-      <nav aria-label="Dashboard" className="flex flex-1 flex-col gap-1 px-3 py-2">
+      <nav aria-label="Dashboard" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
