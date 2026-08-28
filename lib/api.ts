@@ -221,10 +221,18 @@ export interface KnowledgeUploadResult {
   status: DocumentStatus;
 }
 
+/** The only two roles anyone may pick for themselves. The backend's
+ * SELF_REGISTERABLE_ROLES (app/schemas/user.py) rejects anything else on
+ * /auth/register with a 422 - platform_admin and medical_reviewer are granted
+ * by an existing admin through PATCH /admin/users/{id}. */
+export type SelfRegisterableRole = Extract<UserRole, 'athlete' | 'coach'>;
+
 export interface RegisterPayload {
   email: string;
   full_name: string;
   password: string;
+  /** Omitted means athlete - the backend's own default. */
+  role?: SelfRegisterableRole;
 }
 
 export interface AuthTokens {

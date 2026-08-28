@@ -2,7 +2,20 @@
 
 import {useState, useEffect, useRef, type FormEvent} from 'react';
 import Link from 'next/link';
-import {ApiClient} from '@/lib/api';
+import {ApiClient, type SelfRegisterableRole} from '@/lib/api';
+
+const ROLE_OPTIONS: {value: SelfRegisterableRole; label: string; hint: string}[] = [
+  {
+    value: 'athlete',
+    label: 'Athlete',
+    hint: 'Upload your sessions and track your own form, risk and progress.'
+  },
+  {
+    value: 'coach',
+    label: 'Coach',
+    hint: 'Create teams and follow a whole squad’s risk screening and sessions.'
+  }
+];
 
 declare global {
   interface Window {
@@ -28,6 +41,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [role, setRole] = useState<SelfRegisterableRole>('athlete');
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,7 +52,8 @@ export default function SignupPage() {
       await ApiClient.register({
         full_name: `${form.get('name')} ${form.get('last-name')}`,
         email: form.get('email') as string,
-        password: form.get('password') as string
+        password: form.get('password') as string,
+        role
       });
       setRegisteredEmail(form.get('email') as string);
       setRegistered(true);
@@ -186,6 +201,34 @@ export default function SignupPage() {
                           {error}
                         </div>
                       )}
+                      {/* Coach is self-registerable on the backend; admin and
+                          medical-reviewer are not, so they are deliberately
+                          absent here rather than shown and rejected. */}
+                      <fieldset>
+                        <legend className="text-muted-foreground mb-2 block text-left text-sm font-medium leading-none">
+                          I&apos;m signing up as
+                        </legend>
+                        <div className="grid grid-cols-2 gap-2">
+                          {ROLE_OPTIONS.map((option) => (
+                            <label key={option.value} className="cursor-pointer">
+                              <input
+                                type="radio"
+                                name="role"
+                                value={option.value}
+                                checked={role === option.value}
+                                onChange={() => setRole(option.value)}
+                                className="peer sr-only"
+                              />
+                              <span className="flex h-9 items-center justify-center rounded-md bg-background text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-foreground/10 transition-[color,box-shadow,background-color] hover:bg-foreground/[0.04] peer-checked:bg-primary/[0.08] peer-checked:text-primary peer-checked:ring-primary peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50">
+                                {option.label}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-muted-foreground mt-2 text-left text-xs">
+                          {ROLE_OPTIONS.find((option) => option.value === role)?.hint}
+                        </p>
+                      </fieldset>
                       <div className="space-y-2">
                         <label
                           className="text-muted-foreground block text-left text-sm font-medium leading-none"
