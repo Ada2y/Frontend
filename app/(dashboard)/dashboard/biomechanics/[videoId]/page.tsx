@@ -1,6 +1,6 @@
 'use client';
 
-import {use, useEffect, useRef, useState} from 'react';
+import {use, useEffect, useState} from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -20,7 +20,7 @@ import {
 import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import CoachCard from '@/app/(dashboard)/_components/CoachCard';
-import CorrectionCanvas from '@/app/(dashboard)/_components/CorrectionCanvas';
+import CorrectionView from '@/app/(dashboard)/_components/CorrectionView';
 import AthletePicker from '@/app/(dashboard)/_components/AthletePicker';
 import EvidenceNote from '@/app/(dashboard)/_components/EvidenceNote';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
@@ -88,55 +88,6 @@ function OutcomeIcon({outcome}: {outcome: CheckResult['outcome']}) {
   return <HelpCircle className="size-4 shrink-0 text-muted-foreground" />;
 }
 
-function EvidenceImage({videoId, filename}: {videoId: string; filename: string}) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-  const urlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    ApiClient.fetchEvidenceBlob(videoId, filename)
-      .then((url) => {
-        if (cancelled) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        urlRef.current = url;
-        setSrc(url);
-      })
-      .catch(() => !cancelled && setError(true));
-    return () => {
-      cancelled = true;
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    };
-  }, [videoId, filename]);
-
-  if (error) return <p className="text-sm text-muted-foreground">Evidence image unavailable.</p>;
-  if (!src) {
-    return (
-      <div className="flex h-48 w-full max-w-sm items-center justify-center rounded-xl bg-muted">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    // unoptimized because the source is a blob: URL created in this browser
-    // from an authenticated fetch - the optimizer runs server-side and cannot
-    // reach it. Everything else next/image gives us (layout stability from
-    // the explicit intrinsic size, lazy loading, decoding) still applies.
-    <Image
-      src={src}
-      alt="Evidence frame"
-      width={640}
-      height={480}
-      unoptimized
-      sizes="(max-width: 640px) 100vw, 384px"
-      className="h-auto w-full max-w-sm rounded-lg border border-border"
-    />
-  );
-}
-
 function DownloadPdfButton({videoId}: {videoId: string}) {
   const [state, setState] = useState<'idle' | 'working' | 'error'>('idle');
 
@@ -188,47 +139,9 @@ function CheckRow({videoId, check}: {videoId: string; check: CheckResult}) {
         {check.plain ?? check.message ?? ''}
       </p>
 
-      {/* Prefer the vector comparison: the baked overlay is unreadable
-          whenever the source footage is busy. The JPEG stays as the fallback
-          for reports generated before correction_pose existed. */}
-      {check.correction_pose ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <CorrectionCanvas correction={check.correction_pose} />
-          {check.evidence_image && (
-            <figure className="flex flex-col gap-1">
-              <figcaption className="text-xs font-medium text-muted-foreground">
-                The frame this came from
-              </figcaption>
-              <EvidenceImage videoId={videoId} filename={check.evidence_image} />
-            </figure>
-          )}
-        </div>
-      ) : check.correction_image ? (
-        <div className="flex flex-col gap-1.5">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {check.evidence_image && (
-              <figure className="flex flex-col gap-1">
-                <figcaption className="text-xs font-medium text-muted-foreground">
-                  Your rep
-                </figcaption>
-                <EvidenceImage videoId={videoId} filename={check.evidence_image} />
-              </figure>
-            )}
-            <figure className="flex flex-col gap-1">
-              <figcaption className="text-xs font-medium text-muted-foreground">
-                With the correction
-              </figcaption>
-              <EvidenceImage videoId={videoId} filename={check.correction_image} />
-            </figure>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            The cyan outline is an illustrative guide generated from your own frame, not an exact
-            biomechanical prescription.
-          </p>
-        </div>
-      ) : (
-        check.evidence_image && <EvidenceImage videoId={videoId} filename={check.evidence_image} />
-      )}
+      {/* Both views of the same solved geometry - skeleton or over the source
+          frame - with the athlete's choice shared across every check here. */}
+      <CorrectionView videoId={videoId} check={check} />
     </div>
   );
 }
