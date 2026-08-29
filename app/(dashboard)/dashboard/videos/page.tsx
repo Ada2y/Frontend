@@ -19,6 +19,7 @@ import {
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
+import {ANGLE_CONFIG, ANGLE_STEPS, FILMING_DONTS, FILMING_DOS} from '@/lib/exercise-guides';
 import {
   ApiClient,
   cameraGuideClip,
@@ -130,55 +131,6 @@ function formatExercise(exercise: VideoExercise | null): string | null {
   if (!exercise) return null;
   return ALL_EXERCISES.find((e) => e.value === exercise)?.label ?? exercise;
 }
-
-const ANGLE_CONFIG: Record<CameraAngle, {label: string; icon: string; color: string; tip: string}> =
-  {
-    side: {
-      label: 'Side View',
-      icon: '→',
-      color: 'bg-blue-500/10 text-blue-600 ring-blue-500/20',
-      tip: 'Stand perpendicular to the athlete. The camera should capture the full range of motion from the side.'
-    },
-    diagonal: {
-      label: '45° Diagonal',
-      icon: '↗',
-      color: 'bg-amber-500/10 text-amber-600 ring-amber-500/20',
-      tip: 'Position the camera at roughly a 45-degree angle. This captures both side and front details.'
-    },
-    front: {
-      label: 'Front View',
-      icon: '↑',
-      color: 'bg-green-500/10 text-green-600 ring-green-500/20',
-      tip: 'Face the athlete directly. Ensure the camera captures the full body from head to toe.'
-    }
-  };
-
-/** Placement instructions the demo clip cannot convey on its own (how far, how
- * high, how many reps). Written as ordered steps because users follow a numbered
- * list; the old unordered tip grid left them guessing at distances. */
-const ANGLE_STEPS: Record<CameraAngle, string[]> = {
-  side: [
-    'Stand your phone 2-3 steps to your left or right, facing you straight on.',
-    'Put it at hip height - on a bench, a bag or a tripod, not in someone’s hand.',
-    'Hold it landscape (sideways) so your head and feet both stay in frame.',
-    'Record 3-5 clean reps, then stop.'
-  ],
-  diagonal: [
-    'Stand your phone 2-3 steps away, halfway between your side and your front.',
-    'Put it at hip height - on a bench, a bag or a tripod, not in someone’s hand.',
-    'Hold it landscape (sideways) so your head and feet both stay in frame.',
-    'Record 3-5 clean reps, then stop.'
-  ],
-  front: [
-    'Stand your phone 2-3 steps directly in front of you, facing you.',
-    'Put it at hip height - on a bench, a bag or a tripod, not in someone’s hand.',
-    'Hold it landscape (sideways) so your head and feet both stay in frame.',
-    'Record 3-5 clean reps, then stop.'
-  ]
-};
-
-const FILMING_DOS = ['Whole body in frame, head to feet', 'Bright, even lighting'];
-const FILMING_DONTS = ['Phone held by hand (shaky)', 'Zoomed in or filmed from another angle'];
 
 /** The demo clip is the guide. Everything else is a caption for it: users copy
  * framing they can see far more reliably than framing described in a sentence. */

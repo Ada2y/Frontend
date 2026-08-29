@@ -11,7 +11,8 @@ import {
   User,
   Users,
   Users2,
-  BookOpen
+  BookOpen,
+  LifeBuoy
 } from 'lucide-react';
 
 export interface DashboardNavItem {
@@ -59,7 +60,10 @@ export const dashboardNavItems: DashboardNavItem[] = [
     href: '/dashboard/admin/knowledge-base',
     icon: BookOpen,
     roles: PLATFORM_ADMIN_ONLY
-  }
+  },
+  // No `roles`: help is for everyone. A coach fielding "how do I film this?"
+  // needs the same clips and the same assistant an athlete does.
+  {label: 'Help', href: '/dashboard/help', icon: LifeBuoy}
   // Team and Admin screens are wired to the real API (/coach/* and /admin/*).
   // The few coach features with no endpoint - invites, private notes, the team
   // plan builder, body-part risk - still read lib/mocks/team-service.ts and are
