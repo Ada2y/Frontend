@@ -26,6 +26,7 @@ import EvidenceNote from '@/app/(dashboard)/_components/EvidenceNote';
 import ProgressRing from '@/app/(dashboard)/_components/ProgressRing';
 import {RepBreakdownChart, PassFailPieChart} from '@/app/(dashboard)/_components/ReportCharts';
 import SkeletonPlayer from '@/app/(dashboard)/_components/SkeletonPlayer';
+import {useAuth} from '@/lib/auth-context';
 import {cn} from '@/lib/utils';
 import {
   ApiClient,
@@ -340,6 +341,7 @@ function RepAccordion({
 
 export default function BiomechanicsReportPage({params}: {params: Promise<{videoId: string}>}) {
   const {videoId} = use(params);
+  const {user} = useAuth();
   const [status, setStatus] = useState<VideoStatus | null>(null);
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [failureReason, setFailureReason] = useState<string | null>(null);
@@ -380,11 +382,14 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
     };
   }, [videoId]);
 
+  // The reports index lists only your own uploads, so a coach who arrived here
+  // from a team alert belongs back on the team, not on a page they can't open.
+  const isCoach = user?.role === 'coach';
   const backLink = (
-    <Link href="/dashboard/biomechanics" className="w-fit">
+    <Link href={isCoach ? '/dashboard/team' : '/dashboard/biomechanics'} className="w-fit">
       <Button variant="ghost" size="lg">
         <ArrowLeft className="mr-1 size-4" />
-        Back to reports
+        {isCoach ? 'Back to teams' : 'Back to reports'}
       </Button>
     </Link>
   );
@@ -591,7 +596,10 @@ export default function BiomechanicsReportPage({params}: {params: Promise<{video
 
       <EvidenceNote evidence={report.input.evidence} />
 
-      <CoachCard videoId={videoId} />
+      {/* A coach reaches this page from a team alert and may read the report,
+          but CoachService still scopes the chat to the athlete who owns the
+          video - so the card would only ever 403 for them. */}
+      {user?.role === 'athlete' && <CoachCard videoId={videoId} />}
 
       {/* Renders itself away when the analysis has no stored pose frames. */}
       <SkeletonPlayer videoId={videoId} />
