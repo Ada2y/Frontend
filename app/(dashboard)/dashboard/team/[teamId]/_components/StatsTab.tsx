@@ -10,13 +10,13 @@ import {
   type ChartConfig
 } from '@/components/ui/chart';
 import {Button} from '@/components/ui/button';
-import AthleteLabel from '@/app/(dashboard)/_components/AthleteLabel';
+import AthleteLabel, {athleteNamesFrom} from '@/app/(dashboard)/_components/AthleteLabel';
 import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import RiskBandBadge from '@/app/(dashboard)/_components/RiskBandBadge';
 import StatCard from '@/app/(dashboard)/_components/StatCard';
 import {cn} from '@/lib/utils';
 import {TeamService, type SquadStats} from '@/lib/mocks/team-service';
-import type {TeamDetail, TeamRiskStat} from '@/lib/api';
+import {ApiClient, type TeamDetail, type TeamRiskStat} from '@/lib/api';
 
 const COLORS = {
   primary: '#5e6ad2',
@@ -36,6 +36,24 @@ function riskColor(score: number) {
 
 export default function StatsTab({team, riskStats}: {team: TeamDetail; riskStats: TeamRiskStat[]}) {
   const [mockStats, setMockStats] = useState<SquadStats | null>(null);
+
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  // Risk stats are the one coach response still keyed only by user id.
+  const namesById = athleteNamesFrom(team.members);
+
+  async function handleExport() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await ApiClient.downloadTeamReportPdf(team.id);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Could not build that report.');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -85,9 +103,23 @@ export default function StatsTab({team, riskStats}: {team: TeamDetail; riskStats
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl bg-card p-8 ring-1 ring-foreground/10">
-        <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Injury-risk screening by athlete
-        </p>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Injury-risk screening by athlete
+          </p>
+          {/* Server-rendered squad report: roster, team risk and each player's
+              plans. It reports on this card's data, not the mock panels below. */}
+          <Button size="sm" variant="outline" disabled={exporting} onClick={handleExport}>
+            <Download className="size-3.5" />
+            {exporting ? 'Building…' : 'Export squad PDF'}
+          </Button>
+        </div>
+
+        {exportError && (
+          <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger" role="alert">
+            {exportError}
+          </p>
+        )}
         {ranked.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No risk screening yet — it appears once roster athletes have training data.
@@ -97,7 +129,10 @@ export default function StatsTab({team, riskStats}: {team: TeamDetail; riskStats
             <div key={row.athlete_user_id} className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="flex items-center gap-2">
-                  <AthleteLabel userId={row.athlete_user_id} />
+                  <AthleteLabel
+                    userId={row.athlete_user_id}
+                    name={namesById.get(row.athlete_user_id)}
+                  />
                   <RiskBandBadge band={row.band} available={row.available} />
                 </span>
                 <span className="font-mono tabular-nums text-muted-foreground">
@@ -124,10 +159,6 @@ export default function StatsTab({team, riskStats}: {team: TeamDetail; riskStats
             Body part &amp; 30-day trend
             <MockBadge />
           </p>
-          <Button size="sm" variant="outline" onClick={() => window.print()}>
-            <Download className="size-3.5" />
-            Export PDF
-          </Button>
         </div>
 
         {mockStats === null ? (

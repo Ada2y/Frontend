@@ -18,7 +18,10 @@ import {
 } from '@/components/ui/select';
 import {Button} from '@/components/ui/button';
 import {Label} from '@/components/ui/label';
-import AthleteLabel, {shortAthleteId} from '@/app/(dashboard)/_components/AthleteLabel';
+import AthleteLabel, {
+  athleteNamesFrom,
+  shortAthleteId
+} from '@/app/(dashboard)/_components/AthleteLabel';
 import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import {
   ApiClient,
@@ -45,7 +48,13 @@ function DeltaIcon({direction}: {direction: string}) {
   return <Minus className="size-3.5 text-muted-foreground" />;
 }
 
-function PrivateNotes({athleteUserId}: {athleteUserId: string}) {
+function PrivateNotes({
+  athleteUserId,
+  athleteName
+}: {
+  athleteUserId: string;
+  athleteName: string | null | undefined;
+}) {
   const [annotations, setAnnotations] = useState<CoachAnnotation[]>([]);
   const [note, setNote] = useState('');
 
@@ -71,7 +80,7 @@ function PrivateNotes({athleteUserId}: {athleteUserId: string}) {
     <div className="rounded-xl bg-card p-8 ring-1 ring-foreground/10">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Private notes on {shortAthleteId(athleteUserId)}
+          Private notes on {athleteName || shortAthleteId(athleteUserId)}
         </p>
         <MockBadge />
       </div>
@@ -111,6 +120,10 @@ export default function CompareTab({team}: {team: TeamDetail}) {
   const [comparison, setComparison] = useState<SessionComparison | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // compare-reports takes a user id and returns sessions, never a name, so the
+  // roster is what turns the picker and the header into readable labels.
+  const namesById = athleteNamesFrom(team.members);
 
   useEffect(() => {
     if (!athleteId || !exercise) return;
@@ -158,8 +171,12 @@ export default function CompareTab({team}: {team: TeamDetail}) {
             </SelectTrigger>
             <SelectContent>
               {team.members.map((m) => (
-                <SelectItem key={m.user_id} value={m.user_id} className="font-mono">
-                  {shortAthleteId(m.user_id)}
+                <SelectItem
+                  key={m.user_id}
+                  value={m.user_id}
+                  className={m.athlete_name ? undefined : 'font-mono'}
+                >
+                  {m.athlete_name || shortAthleteId(m.user_id)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -182,7 +199,11 @@ export default function CompareTab({team}: {team: TeamDetail}) {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label>Selected</Label>
-          <AthleteLabel userId={athleteId} className="h-9 items-center" />
+          <AthleteLabel
+            userId={athleteId}
+            name={namesById.get(athleteId)}
+            className="h-9 items-center"
+          />
         </div>
       </div>
 
@@ -265,7 +286,9 @@ export default function CompareTab({team}: {team: TeamDetail}) {
         </>
       ) : null}
 
-      {athleteId && <PrivateNotes athleteUserId={athleteId} />}
+      {athleteId && (
+        <PrivateNotes athleteUserId={athleteId} athleteName={namesById.get(athleteId)} />
+      )}
     </div>
   );
 }

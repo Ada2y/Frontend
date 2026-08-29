@@ -1,7 +1,8 @@
 'use client';
 
 import {useEffect, useState, type FormEvent} from 'react';
-import {AlertTriangle, ShieldAlert} from 'lucide-react';
+import Link from 'next/link';
+import {AlertTriangle, ArrowUpRight, ShieldAlert} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import AthleteLabel from '@/app/(dashboard)/_components/AthleteLabel';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
@@ -56,7 +57,7 @@ function AlertRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <AthleteLabel userId={alert.athlete_user_id} />
+            <AthleteLabel userId={alert.athlete_user_id} name={alert.athlete_name} />
             <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-[11px] font-medium text-danger">
               <AlertTriangle className="size-3" />
               Risk finding
@@ -66,6 +67,18 @@ function AlertRow({
             {exerciseLabel(alert.exercise)} · {formatDate(alert.created_at)}
           </p>
         </div>
+
+        {alert.video_session_id && (
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={`/dashboard/biomechanics/${alert.video_session_id}`} />}
+          >
+            Open report
+            <ArrowUpRight className="size-3.5" />
+          </Button>
+        )}
       </div>
 
       {reviewed ? (
@@ -151,8 +164,9 @@ export default function AlertsTab({team}: {team: TeamDetail}) {
 
   return (
     <div className="flex flex-col gap-6 pt-4">
-      {/* The API returns the analysis-session id, not a video id, and a coach
-          cannot read another user's report - so these rows do not link out. */}
+      {/* Alerts now carry the video session id, and AnalysisService lets a
+          coach read the report of any athlete on their own team - so each row
+          links straight to the session that raised it. */}
       <p className="text-sm text-muted-foreground">
         {alerts.length} {alerts.length === 1 ? 'session' : 'sessions'} on this roster produced a
         high-severity finding.

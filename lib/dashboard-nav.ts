@@ -66,6 +66,16 @@ export const dashboardNavItems: DashboardNavItem[] = [
   // labelled with <MockBadge /> wherever they render.
 ];
 
+/** Paths a role may open even though the nav entry covering them is scoped
+ * tighter. A coach reaches one athlete's report by following an alert on their
+ * own team - the backend allows exactly that (AnalysisService checks team
+ * membership) - but has no use for the Biomechanics index, which lists only
+ * the signed-in user's own uploads. Keeping this out of the nav table is the
+ * point: it grants the detail route without adding a sidebar link. */
+const EXTRA_ACCESS: {prefix: string; roles: string[]}[] = [
+  {prefix: '/dashboard/biomechanics/', roles: COACH_ONLY}
+];
+
 export function navItemsForRole(role: string | undefined): DashboardNavItem[] {
   if (!role) return dashboardNavItems.filter((item) => !item.roles);
   return dashboardNavItems.filter((item) => !item.roles || item.roles.includes(role));
@@ -85,5 +95,10 @@ export function allowedRolesForPath(pathname: string): string[] | undefined {
   // overview entry - default it closed.
   if (!match?.roles && pathname.startsWith('/dashboard/admin')) return PLATFORM_ADMIN_ONLY;
 
-  return match?.roles;
+  if (!match?.roles) return undefined;
+
+  const extra = EXTRA_ACCESS.filter((rule) => pathname.startsWith(rule.prefix)).flatMap(
+    (rule) => rule.roles
+  );
+  return extra.length > 0 ? [...new Set([...match.roles, ...extra])] : match.roles;
 }

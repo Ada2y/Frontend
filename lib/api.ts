@@ -36,13 +36,15 @@ export const SPORT_CATEGORIES: SportCategory[] = [
   'other'
 ];
 
-/** TeamMemberOut - the roster row the backend actually returns. There is no
- * name, risk level or last-session date on it: a coach only gets the athlete's
- * user id, so the UI labels players by a shortened id until the backend
- * exposes a coach-scoped athlete lookup. */
+/** TeamMemberOut - the roster row the backend returns. `athlete_name` is read
+ * off the athlete's own user record, so it is null only when that account has
+ * no full name set; the UI falls back to a shortened user id there. Risk level
+ * and last-session date are still not on this row - risk comes from
+ * /coach/teams/{id}/risk-stats and is joined by user id in the UI. */
 export interface TeamMember {
   team_id: string;
   user_id: string;
+  athlete_name: string | null;
   joined_at: string;
 }
 
@@ -61,17 +63,35 @@ export interface TeamDetail extends Team {
 }
 
 /** One analysis session on this team that produced at least one severity=risk
- * finding. `id` is the *analysis session* id, not a video id, and coaches
- * cannot read another user's report, so these rows do not deep-link anywhere. */
+ * finding. `id` and `analysis_session_id` are the same analysis-session id;
+ * `video_session_id` is the video that session was run on, which is what
+ * /dashboard/biomechanics/{videoId} needs. It is null when the video row is
+ * gone, and only then does the alert not link anywhere. A coach may read the
+ * report behind it: AnalysisService widened its ownership check to cover
+ * athletes on the coach's own team. */
 export interface SessionAlert {
   id: string;
+  analysis_session_id: string | null;
+  video_session_id: string | null;
   athlete_user_id: string;
+  athlete_name: string | null;
   exercise: string | null;
   created_at: string;
 }
 
+/** AthleteSearchOut - what /coach/athletes returns for someone a coach has
+ * not added yet. Just enough to pick the right person; nothing about their
+ * health or training. */
+export interface AthleteSearchResult {
+  id: string;
+  full_name: string | null;
+  email: string;
+}
+
 /** RiskStatOut - a trimmed RiskAssessment, one per roster member. The response
- * model drops `factors`/`disclaimer`, so only these fields arrive. */
+ * model drops `factors`/`disclaimer`, so only these fields arrive. Unlike the
+ * roster and alert rows it still carries no name, so the UI joins it against
+ * TeamDetail.members by user id. */
 export interface TeamRiskStat {
   athlete_user_id: string;
   available: boolean;
@@ -1089,6 +1109,13 @@ export class ApiClient {
 
   /** Roster changes are by athlete *user id*: the backend has no invite flow,
    * so the coach has to already know the id of the athlete they're adding. */
+  /** Athlete lookup behind "Add player". `search` matches a name, an email or
+   * a pasted athlete id, and the backend requires at least 2 characters. */
+  static searchAthletes(search: string, limit = 10) {
+    const params = new URLSearchParams({search, limit: String(limit)});
+    return request<AthleteSearchResult[]>(`/coach/athletes?${params}`);
+  }
+
   static addTeamMember(teamId: string, athleteUserId: string) {
     return request<TeamMember>(`/coach/teams/${teamId}/members`, {
       method: 'POST',
@@ -1320,12 +1347,17 @@ export class ApiClient {
     return request<PoseSequence>(`/videos/${id}/pose-sequence`);
   }
 
-  /** Downloads the shareable PDF. `<a download>` can't send an Authorization
-   * header, so this fetches the bytes and hands the browser a blob URL. */
-  static async downloadReportPdf(id: string): Promise<void> {
+  /** Streams a PDF response straight to a download. Both endpoints below need
+   * an Authorization header, so a plain <a href> can't fetch them. */
+  private static async downloadPdf(
+    path: string,
+    fallbackName: string,
+    init?: RequestInit
+  ): Promise<void> {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-    const res = await fetch(`${API_BASE}/videos/${id}/report.pdf`, {
-      headers: token ? {Authorization: `Bearer ${token}`} : {}
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {...init?.headers, ...(token ? {Authorization: `Bearer ${token}`} : {})}
     });
     if (!res.ok) throw new Error('Failed to generate the PDF report');
 
@@ -1335,13 +1367,28 @@ export class ApiClient {
     try {
       const link = document.createElement('a');
       link.href = url;
-      link.download = match?.[1] ?? `ada2y-report-${id}.pdf`;
+      link.download = match?.[1] ?? fallbackName;
       document.body.appendChild(link);
       link.click();
       link.remove();
     } finally {
       URL.revokeObjectURL(url);
     }
+  }
+
+  static downloadReportPdf(id: string): Promise<void> {
+    return ApiClient.downloadPdf(`/videos/${id}/report.pdf`, `ada2y-report-${id}.pdf`);
+  }
+
+  /** Squad report from ReportBuilderService: the roster, team injury risk and
+   * each player's plans, rendered server-side. Omitting `include` lets the
+   * backend fall back to every team section it offers. */
+  static downloadTeamReportPdf(teamId: string): Promise<void> {
+    return ApiClient.downloadPdf('/reports/generate.pdf', `ada2y-team-${teamId}.pdf`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({report_type: 'team', team_id: teamId})
+    });
   }
 
   /** "That's not me" — re-run the analysis on the chosen person. */
