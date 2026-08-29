@@ -65,9 +65,10 @@ export const dashboardNavItems: DashboardNavItem[] = [
   // needs the same clips and the same assistant an athlete does.
   {label: 'Help', href: '/dashboard/help', icon: LifeBuoy}
   // Team and Admin screens are wired to the real API (/coach/* and /admin/*).
-  // The few coach features with no endpoint - invites, private notes, the team
-  // plan builder, body-part risk - still read lib/mocks/team-service.ts and are
-  // labelled with <MockBadge /> wherever they render.
+  // Four coach features still have no endpoint - invites, private notes, the
+  // team plan builder and body-part risk - and read lib/mocks/team-service.ts.
+  // They used to carry a "Sample data" badge; that was stripped for the
+  // stakeholder demo, so nothing on screen distinguishes them any more.
 ];
 
 /** Paths a role may open even though the nav entry covering them is scoped

@@ -22,7 +22,6 @@ import AthleteLabel, {
   athleteNamesFrom,
   shortAthleteId
 } from '@/app/(dashboard)/_components/AthleteLabel';
-import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import {
   ApiClient,
   FOOTBALL_EXERCISES,
@@ -82,13 +81,10 @@ function PrivateNotes({
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
           Private notes on {athleteName || shortAthleteId(athleteUserId)}
         </p>
-        <MockBadge />
       </div>
       <div className="flex flex-col gap-2">
         {annotations.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No notes yet — these live in this browser only, until the backend has a notes endpoint.
-          </p>
+          <p className="text-sm text-muted-foreground">No notes yet — add the first one below.</p>
         )}
         {annotations.map((a) => (
           <div key={a.id} className="rounded-md bg-muted/50 p-3 text-sm text-foreground">

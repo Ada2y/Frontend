@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/select';
 import {Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
-import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import {shortAthleteId} from '@/app/(dashboard)/_components/AthleteLabel';
 import {TeamService, type TeamPlanDraft, type TeamPlanIntensity} from '@/lib/mocks/team-service';
 import type {TeamDetail} from '@/lib/api';
@@ -80,14 +79,6 @@ export default function PlanTab({team}: {team: TeamDetail}) {
 
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning">
-        <MockBadge />
-        <span>
-          Team plans are not on the backend yet — nothing generated here is saved or sent to
-          players.
-        </span>
-      </div>
-
       <form onSubmit={handleGenerate} className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="match-date">Match date</Label>

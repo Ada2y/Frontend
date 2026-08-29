@@ -17,7 +17,6 @@ import {Label} from '@/components/ui/label';
 import {Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from '@/components/ui/table';
 import AthleteLabel from '@/app/(dashboard)/_components/AthleteLabel';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
-import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import RiskBandBadge from '@/app/(dashboard)/_components/RiskBandBadge';
 import {ApiClient, type AthleteSearchResult, type TeamDetail, type TeamRiskStat} from '@/lib/api';
 import {TeamService} from '@/lib/mocks/team-service';
@@ -236,14 +235,8 @@ function InviteDialog({teamId}: {teamId: string}) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Invite a player
-            <MockBadge />
-          </DialogTitle>
-          <DialogDescription>
-            Share a join link or invite by phone number. No backend endpoint exists for invites yet,
-            so nothing is actually sent.
-          </DialogDescription>
+          <DialogTitle>Invite a player</DialogTitle>
+          <DialogDescription>Share a join link, or invite by phone number.</DialogDescription>
         </DialogHeader>
         {sent ? (
           <div className="flex items-center gap-2 rounded-md bg-muted/50 p-3 text-sm text-foreground">

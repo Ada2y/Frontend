@@ -6,7 +6,6 @@ import {AlertTriangle, ArrowUpRight, ShieldAlert} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import AthleteLabel from '@/app/(dashboard)/_components/AthleteLabel';
 import EmptyState from '@/app/(dashboard)/_components/EmptyState';
-import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import {
   ApiClient,
   FOOTBALL_EXERCISES,
@@ -103,7 +102,6 @@ function AlertRow({
           <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
             Mark reviewed
           </Button>
-          <MockBadge />
         </div>
       )}
     </div>
