@@ -43,10 +43,18 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="selection:bg-foreground/10 selection:text-foreground bg-background">
-      <main className="bg-background">
-        <div className="grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6">
-          <div className="m-auto w-full max-w-72 self-center text-center">
+    <div className="theme-light selection:bg-foreground/10 selection:text-foreground bg-background">
+      <main className="relative bg-background">
+        {/* One indigo wash off the top edge - the logo's own hue - so the white
+            form card has something to lift off of. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(80rem_45rem_at_50%_-15%,rgba(94,106,210,0.12),transparent_65%)]"
+        />
+        {/* pt clears the fixed floating header, which otherwise sits on top of
+            the logo above the form. */}
+        <div className="relative grid min-h-dvh grid-rows-[1fr_auto] gap-6 p-6 pt-20 lg:pt-24">
+          <div className="m-auto w-full max-w-sm self-center text-center">
             <Link aria-label="go home" className="mx-auto flex size-10 *:m-auto" href="/">
               <svg
                 className="size-7"
@@ -75,109 +83,113 @@ export default function ForgotPasswordPage() {
                 </defs>
               </svg>
             </Link>
-            <h1 className="mb-10 mt-6 text-xl font-semibold">Reset your password</h1>
-            <div className="space-y-2">
-              {step === 'email' && (
-                <form className="space-y-5" onSubmit={handleRequestCode}>
-                  {error && (
-                    <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                      {error}
+            <h1 className="mb-6 mt-5 text-xl font-semibold tracking-tight text-foreground">
+              Reset your password
+            </h1>
+            <div className="rounded-2xl bg-card p-6 shadow-[0_1px_2px_rgba(8,9,10,0.04),0_12px_32px_-12px_rgba(8,9,10,0.16)] ring-1 ring-foreground/[0.06] sm:p-8">
+              <div className="space-y-2">
+                {step === 'email' && (
+                  <form className="space-y-5" onSubmit={handleRequestCode}>
+                    {error && (
+                      <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {error}
+                      </div>
+                    )}
+                    <p className="text-muted-foreground text-sm">
+                      Enter your email and we&apos;ll send you a reset code.
+                    </p>
+                    <div className="space-y-2">
+                      <label
+                        className="text-muted-foreground block text-left text-sm font-medium leading-none"
+                        htmlFor="email"
+                      >
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-background px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="email"
+                        required
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
                     </div>
-                  )}
-                  <p className="text-muted-foreground text-sm">
-                    Enter your email and we&apos;ll send you a reset code.
-                  </p>
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium leading-none block text-left"
-                      htmlFor="email"
+                    <button
+                      className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                      type="submit"
+                      disabled={loading}
                     >
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                      id="email"
-                      required
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
-                    type="submit"
-                    disabled={loading}
-                  >
-                    {loading ? 'Sending...' : 'Send reset code'}
-                  </button>
-                </form>
-              )}
+                      {loading ? 'Sending...' : 'Send reset code'}
+                    </button>
+                  </form>
+                )}
 
-              {step === 'reset' && (
-                <form className="space-y-5" onSubmit={handleResetPassword}>
-                  {error && (
-                    <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                      {error}
+                {step === 'reset' && (
+                  <form className="space-y-5" onSubmit={handleResetPassword}>
+                    {error && (
+                      <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {error}
+                      </div>
+                    )}
+                    {success && !error && (
+                      <div className="rounded-md bg-success-bg px-3 py-2 text-sm text-success">
+                        {success}
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <label
+                        className="text-muted-foreground block text-left text-sm font-medium leading-none"
+                        htmlFor="code"
+                      >
+                        Reset code
+                      </label>
+                      <input
+                        type="text"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-background px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="code"
+                        required
+                        placeholder="Enter the code sent to your email"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                      />
                     </div>
-                  )}
-                  {success && !error && (
-                    <div className="rounded-md bg-success-bg px-3 py-2 text-sm text-success dark:text-green-400">
-                      {success}
+                    <div className="space-y-2">
+                      <label
+                        className="text-muted-foreground block text-left text-sm font-medium leading-none"
+                        htmlFor="new-password"
+                      >
+                        New password
+                      </label>
+                      <input
+                        type="password"
+                        className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-background px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
+                        id="new-password"
+                        required
+                        minLength={8}
+                        placeholder="Enter your new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium leading-none block text-left"
-                      htmlFor="code"
+                    <button
+                      className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                      type="submit"
+                      disabled={loading}
                     >
-                      Reset code
-                    </label>
-                    <input
-                      type="text"
-                      className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                      id="code"
-                      required
-                      placeholder="Enter the code sent to your email"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium leading-none block text-left"
-                      htmlFor="new-password"
-                    >
-                      New password
-                    </label>
-                    <input
-                      type="password"
-                      className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full"
-                      id="new-password"
-                      required
-                      minLength={8}
-                      placeholder="Enter your new password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
-                    type="submit"
-                    disabled={loading}
-                  >
-                    {loading ? 'Resetting...' : 'Reset password'}
-                  </button>
-                </form>
-              )}
+                      {loading ? 'Resetting...' : 'Reset password'}
+                    </button>
+                  </form>
+                )}
 
-              <div className="pt-2">
-                <Link
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  href="/login"
-                >
-                  Back to login
-                </Link>
+                <div className="pt-2">
+                  <Link
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    href="/login"
+                  >
+                    Back to login
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

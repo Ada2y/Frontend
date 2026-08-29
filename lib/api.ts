@@ -24,18 +24,60 @@ export type NutritionStatus =
 
 export type InjuryRiskLevel = 'low' | 'medium' | 'high';
 
-export interface TeamPlayer {
-  id: string;
-  full_name: string;
-  injury_risk: InjuryRiskLevel;
-  last_session_at: string | null;
+/** Matches the backend SportCategory enum exactly - `/coach/teams` rejects
+ * anything else with a 422. */
+export type SportCategory = 'football' | 'basketball' | 'athletics' | 'gym' | 'other';
+
+export const SPORT_CATEGORIES: SportCategory[] = [
+  'football',
+  'basketball',
+  'athletics',
+  'gym',
+  'other'
+];
+
+/** TeamMemberOut - the roster row the backend actually returns. There is no
+ * name, risk level or last-session date on it: a coach only gets the athlete's
+ * user id, so the UI labels players by a shortened id until the backend
+ * exposes a coach-scoped athlete lookup. */
+export interface TeamMember {
+  team_id: string;
+  user_id: string;
+  joined_at: string;
 }
 
 export interface Team {
   id: string;
   name: string;
-  sport: string;
-  players: TeamPlayer[];
+  sport: SportCategory;
+  coach_user_id: string | null;
+  organization_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamDetail extends Team {
+  members: TeamMember[];
+}
+
+/** One analysis session on this team that produced at least one severity=risk
+ * finding. `id` is the *analysis session* id, not a video id, and coaches
+ * cannot read another user's report, so these rows do not deep-link anywhere. */
+export interface SessionAlert {
+  id: string;
+  athlete_user_id: string;
+  exercise: string | null;
+  created_at: string;
+}
+
+/** RiskStatOut - a trimmed RiskAssessment, one per roster member. The response
+ * model drops `factors`/`disclaimer`, so only these fields arrive. */
+export interface TeamRiskStat {
+  athlete_user_id: string;
+  available: boolean;
+  score: number | null;
+  band: 'low' | 'moderate' | 'elevated' | null;
+  note: string;
 }
 
 // SessionStatus intentionally removed - the backend has no per-day
@@ -134,10 +176,63 @@ export interface ReviewQueuePatchResult {
   nutrition_recommendation_status: string | null;
 }
 
+// --- Admin: user management + knowledge base ---
+
+export type UserRole = 'athlete' | 'coach' | 'platform_admin' | 'medical_reviewer';
+
+export type AccountStatus = 'active' | 'suspended' | 'pending_verification' | 'deleted';
+
+/** UserRead. Note what is *not* here: plan tier, session count and last-active
+ * timestamp do not exist on the backend user model. */
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: UserRole;
+  status: AccountStatus;
+  created_at: string;
+}
+
+export interface PaginatedUsers {
+  total: number;
+  skip: number;
+  limit: number;
+  items: AdminUser[];
+}
+
+export type KnowledgeSourceType =
+  'research_paper' | 'clinical_guideline' | 'technique_guideline' | 'athlete_history';
+
+export type DocumentStatus = 'processing' | 'ready' | 'failed';
+
+export interface KnowledgeDoc {
+  id: string;
+  title: string;
+  source_type: KnowledgeSourceType;
+  sport: SportCategory | null;
+  language: string;
+  citation: string | null;
+  status: DocumentStatus;
+  created_at: string;
+}
+
+export interface KnowledgeUploadResult {
+  doc_id: string;
+  status: DocumentStatus;
+}
+
+/** The only two roles anyone may pick for themselves. The backend's
+ * SELF_REGISTERABLE_ROLES (app/schemas/user.py) rejects anything else on
+ * /auth/register with a 422 - platform_admin and medical_reviewer are granted
+ * by an existing admin through PATCH /admin/users/{id}. */
+export type SelfRegisterableRole = Extract<UserRole, 'athlete' | 'coach'>;
+
 export interface RegisterPayload {
   email: string;
   full_name: string;
   password: string;
+  /** Omitted means athlete - the backend's own default. */
+  role?: SelfRegisterableRole;
 }
 
 export interface AuthTokens {
@@ -239,38 +334,87 @@ export type VideoExercise = GymExercise | FootballExercise;
 /** `view` mirrors the backend's VIEW_GUIDANCE (app/ai/cv_pipeline/constants.py)
  * word-for-word - shown to the athlete before they film, since a wrong-angle
  * video completes with the analysis skipped rather than failing outright. */
-export const GYM_EXERCISES: {value: GymExercise; label: string; view: string}[] = [
-  {value: 'squat', label: 'Squat', view: 'Film from the side, with your whole body in frame.'},
+export type CameraAngle = 'side' | 'diagonal' | 'front';
+
+export const GYM_EXERCISES: {
+  value: GymExercise;
+  label: string;
+  view: string;
+  angle: CameraAngle;
+}[] = [
+  {
+    value: 'squat',
+    label: 'Squat',
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
+  },
   {
     value: 'deadlift',
     label: 'Deadlift',
-    view: 'Film from the side, with your whole body in frame.'
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
   },
   {
     value: 'bench_press',
     label: 'Bench Press',
-    view: 'Film from the side, with your whole body in frame.'
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
   },
-  {value: 'push_up', label: 'Push-up', view: 'Film from the side, with your whole body in frame.'},
+  {
+    value: 'push_up',
+    label: 'Push-up',
+    view: 'Film from the side, with your whole body in frame.',
+    angle: 'side'
+  },
   {
     value: 'shoulder_press',
     label: 'Shoulder Press',
-    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.'
+    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.',
+    angle: 'diagonal'
   },
   {
     value: 'lat_pulldown',
     label: 'Lat Pulldown',
-    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.'
+    view: 'Film from a diagonal angle (roughly 45 degrees), with your whole body in frame.',
+    angle: 'diagonal'
   }
 ];
 
-export const FOOTBALL_EXERCISES: {value: FootballExercise; label: string; view: string}[] = [
+export const FOOTBALL_EXERCISES: {
+  value: FootballExercise;
+  label: string;
+  view: string;
+  angle: CameraAngle;
+}[] = [
   {
     value: 'landing',
     label: 'Jump Landing',
-    view: 'Film from the side, with the full jump-landing motion in frame.'
+    view: 'Film from the side, with the full jump-landing motion in frame.',
+    angle: 'side'
   }
 ];
+
+/** Self-hosted camera-angle demo clips under /public/camera-guides. Shows the
+ * athlete filmed from the exact angle the analyser needs, so the user can copy
+ * the framing instead of decoding a written instruction. Gym exercises only. */
+const CAMERA_GUIDE_EXERCISES: VideoExercise[] = [
+  'squat',
+  'deadlift',
+  'bench_press',
+  'push_up',
+  'shoulder_press',
+  'lat_pulldown'
+];
+
+export function cameraGuideClip(
+  exercise: VideoExercise | null | undefined
+): {video: string; poster: string} | null {
+  if (!exercise || !CAMERA_GUIDE_EXERCISES.includes(exercise)) return null;
+  return {
+    video: `/camera-guides/${exercise}.mp4`,
+    poster: `/camera-guides/${exercise}.jpg`
+  };
+}
 
 /** Self-hosted correct-form GIFs under /public/exercise-gifs, one per gym exercise. */
 export function exerciseGifUrl(exercise: VideoExercise | null | undefined): string | null {
@@ -915,14 +1059,65 @@ export class ApiClient {
     return request<BiometricProfile[]>('/athletes/me/sport-suggestion');
   }
 
-  // --- FE-B owned endpoints ---
+  // --- Coach: team management (COACH role only) ---
+  // These live under /coach, not /teams - an earlier version of this client
+  // pointed at /teams and 404'd against the real router.
 
   static listTeams() {
-    return request<Team[]>('/teams');
+    return request<Team[]>('/coach/teams');
   }
 
-  static createTeam(data: {name: string; sport: string}) {
-    return request<Team>('/teams', {method: 'POST', body: JSON.stringify(data)});
+  static createTeam(data: {name: string; sport: SportCategory}) {
+    return request<Team>('/coach/teams', {method: 'POST', body: JSON.stringify(data)});
+  }
+
+  /** The only endpoint that returns the roster - the list endpoint omits it. */
+  static getTeam(teamId: string) {
+    return request<TeamDetail>(`/coach/teams/${teamId}`);
+  }
+
+  static updateTeam(teamId: string, data: {name?: string; sport?: SportCategory}) {
+    return request<Team>(`/coach/teams/${teamId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static deleteTeam(teamId: string) {
+    return request<void>(`/coach/teams/${teamId}`, {method: 'DELETE'});
+  }
+
+  /** Roster changes are by athlete *user id*: the backend has no invite flow,
+   * so the coach has to already know the id of the athlete they're adding. */
+  static addTeamMember(teamId: string, athleteUserId: string) {
+    return request<TeamMember>(`/coach/teams/${teamId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({athlete_user_id: athleteUserId})
+    });
+  }
+
+  static removeTeamMember(teamId: string, athleteUserId: string) {
+    return request<void>(`/coach/teams/${teamId}/members/${athleteUserId}`, {method: 'DELETE'});
+  }
+
+  /** Sessions on this team carrying at least one severity=risk finding. */
+  static getTeamAlerts(teamId: string) {
+    return request<SessionAlert[]>(`/coach/teams/${teamId}/alerts`);
+  }
+
+  /** One injury-risk screening per roster member. Recomputed server-side on
+   * every call, so it can be slow on a large squad. */
+  static getTeamRiskStats(teamId: string) {
+    return request<TeamRiskStat[]>(`/coach/teams/${teamId}/risk-stats`);
+  }
+
+  /** Same payload shape as the athlete's own /comparison/{exercise}, but
+   * scoped to an athlete on one of this coach's teams. */
+  static compareAthleteReports(athleteUserId: string, exercise: string, limit = 10) {
+    return request<SessionComparison>(
+      `/coach/athletes/${athleteUserId}/compare-reports` +
+        `?exercise=${encodeURIComponent(exercise)}&limit=${limit}`
+    );
   }
 
   /** Real LLM call under the hood - can take several seconds. Always
@@ -995,6 +1190,66 @@ export class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(data)
     });
+  }
+
+  // --- Admin: user management (PLATFORM_ADMIN only) ---
+
+  static listUsers(
+    params: {
+      role?: UserRole;
+      status?: AccountStatus;
+      skip?: number;
+      limit?: number;
+    } = {}
+  ) {
+    const query = new URLSearchParams();
+    if (params.role) query.set('role', params.role);
+    if (params.status) query.set('status', params.status);
+    query.set('skip', String(params.skip ?? 0));
+    query.set('limit', String(params.limit ?? 20));
+    return request<PaginatedUsers>(`/admin/users?${query.toString()}`);
+  }
+
+  static updateUser(userId: string, data: {role?: UserRole; status?: AccountStatus}) {
+    return request<AdminUser>(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  }
+
+  static deleteUser(userId: string) {
+    return request<void>(`/admin/users/${userId}`, {method: 'DELETE'});
+  }
+
+  // --- Admin: knowledge base (PLATFORM_ADMIN only) ---
+
+  static listKnowledge(sport?: SportCategory) {
+    return request<KnowledgeDoc[]>(`/admin/knowledge${sport ? `?sport=${sport}` : ''}`);
+  }
+
+  /** Multipart upload. The response only confirms the document was queued -
+   * a Celery worker chunks and embeds it, flipping status to ready/failed,
+   * so the caller polls listKnowledge until nothing is `processing`. */
+  static uploadKnowledge(data: {
+    file: File;
+    title: string;
+    source_type: KnowledgeSourceType;
+    sport?: SportCategory;
+    language?: string;
+    citation?: string;
+  }) {
+    const form = new FormData();
+    form.append('file', data.file);
+    form.append('title', data.title);
+    form.append('source_type', data.source_type);
+    if (data.sport) form.append('sport', data.sport);
+    form.append('language', data.language ?? 'en');
+    if (data.citation) form.append('citation', data.citation);
+    return request<KnowledgeUploadResult>('/admin/knowledge', {method: 'POST', body: form});
+  }
+
+  static deleteKnowledge(docId: string) {
+    return request<void>(`/admin/knowledge/${docId}`, {method: 'DELETE'});
   }
 
   // --- Video upload & biomechanics pipeline ---

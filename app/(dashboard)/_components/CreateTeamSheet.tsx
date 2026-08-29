@@ -12,16 +12,19 @@ import {
   SheetFooter
 } from '@/components/ui/sheet';
 import {Button} from '@/components/ui/button';
+import {SPORT_CATEGORIES, type SportCategory} from '@/lib/api';
 
 const inputClassName =
   'placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 w-full';
 
-const sportOptions = ['football', 'basketball', 'volleyball', 'swimming'] as const;
+// Must match the backend SportCategory enum - /coach/teams 422s on anything
+// else, which is how 'volleyball' and 'swimming' used to fail silently here.
+const sportOptions = SPORT_CATEGORIES;
 
 export default function CreateTeamSheet({
   onCreate
 }: {
-  onCreate: (data: {name: string; sport: string}) => void;
+  onCreate: (data: {name: string; sport: SportCategory}) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -30,7 +33,7 @@ export default function CreateTeamSheet({
     const form = new FormData(e.currentTarget);
     onCreate({
       name: form.get('name') as string,
-      sport: form.get('sport') as string
+      sport: form.get('sport') as SportCategory
     });
     setOpen(false);
     e.currentTarget.reset();

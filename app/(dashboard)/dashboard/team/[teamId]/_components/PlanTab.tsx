@@ -14,19 +14,24 @@ import {
 } from '@/components/ui/select';
 import {Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
+import MockBadge from '@/app/(dashboard)/_components/MockBadge';
+import {shortAthleteId} from '@/app/(dashboard)/_components/AthleteLabel';
 import {TeamService, type TeamPlanDraft, type TeamPlanIntensity} from '@/lib/mocks/team-service';
-import type {Team} from '@/lib/api';
+import type {TeamDetail} from '@/lib/api';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const INTENSITIES: TeamPlanIntensity[] = ['light', 'moderate', 'peak'];
 
 const intensityStyles: Record<TeamPlanIntensity, string> = {
-  light: 'bg-[#22c55e]/10 text-[#22c55e]',
-  moderate: 'bg-[#f59e0b]/10 text-[#f59e0b]',
-  peak: 'bg-destructive/10 text-destructive'
+  light: 'bg-success-bg text-success',
+  moderate: 'bg-warning-bg text-warning',
+  peak: 'bg-danger-bg text-danger'
 };
 
-export default function PlanTab({team}: {team: Team}) {
+/** Entirely mock-backed: there is no team-plan endpoint. /training-plans is
+ * athlete-scoped and generates a plan for the caller, so a coach cannot build
+ * or publish a squad microcycle through the API yet. */
+export default function PlanTab({team}: {team: TeamDetail}) {
   const [matchDate, setMatchDate] = useState('');
   const [intensity, setIntensity] = useState<TeamPlanIntensity>('moderate');
   const [draft, setDraft] = useState<TeamPlanDraft | null>(null);
@@ -42,7 +47,7 @@ export default function PlanTab({team}: {team: Team}) {
         team.id,
         matchDate,
         intensity,
-        team.players
+        team.members.map((m) => m.user_id)
       );
       setDraft(result);
     } finally {
@@ -65,16 +70,24 @@ export default function PlanTab({team}: {team: Team}) {
     }
   }
 
-  if (team.players.length === 0) {
+  if (team.members.length === 0) {
     return (
-      <p className="rounded-xl bg-card p-8 text-sm text-muted-foreground ring-1 ring-foreground/10">
-        Invite players before generating a team plan.
+      <p className="mt-4 rounded-xl bg-card p-8 text-sm text-muted-foreground ring-1 ring-foreground/10">
+        Add players to the roster before generating a team plan.
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pt-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning">
+        <MockBadge />
+        <span>
+          Team plans are not on the backend yet — nothing generated here is saved or sent to
+          players.
+        </span>
+      </div>
+
       <form onSubmit={handleGenerate} className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="match-date">Match date</Label>
@@ -121,17 +134,17 @@ export default function PlanTab({team}: {team: Team}) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {team.players.map((player) => (
-                  <TableRow key={player.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {player.full_name}
+                {team.members.map((member) => (
+                  <TableRow key={member.user_id}>
+                    <TableCell className="font-mono text-foreground">
+                      {shortAthleteId(member.user_id)}
                     </TableCell>
-                    {(draft.per_player[player.id] ?? []).map((day) => (
+                    {(draft.per_player[member.user_id] ?? []).map((day) => (
                       <TableCell key={day.day_of_week}>
                         <Select
                           value={day.intensity}
                           onValueChange={(v) =>
-                            handleOverride(player.id, day.day_of_week, v as TeamPlanIntensity)
+                            handleOverride(member.user_id, day.day_of_week, v as TeamPlanIntensity)
                           }
                         >
                           <SelectTrigger
