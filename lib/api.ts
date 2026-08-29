@@ -551,6 +551,11 @@ export interface HelpAnswer {
   /** True when the reply is documentation quoted verbatim rather than written
    * (no LLM configured server-side). */
   extractive: boolean;
+  /** True when the model provider could not be reached. Distinct from
+   * `used_context: false` - an outage must not be badged as a hole in the
+   * documentation, which would tell the reader the docs are missing something
+   * they actually contain. */
+  error: boolean;
 }
 
 export interface PosePoint {
