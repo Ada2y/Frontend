@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/chart';
 import {Button} from '@/components/ui/button';
 import AthleteLabel, {athleteNamesFrom} from '@/app/(dashboard)/_components/AthleteLabel';
-import MockBadge from '@/app/(dashboard)/_components/MockBadge';
 import RiskBandBadge from '@/app/(dashboard)/_components/RiskBandBadge';
 import StatCard from '@/app/(dashboard)/_components/StatCard';
 import {cn} from '@/lib/utils';
@@ -157,7 +156,6 @@ export default function StatsTab({team, riskStats}: {team: TeamDetail; riskStats
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Body part &amp; 30-day trend
-            <MockBadge />
           </p>
         </div>
 
