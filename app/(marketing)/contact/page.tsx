@@ -1,6 +1,10 @@
 export default function ContactPage() {
   return (
-    <section className="bg-background py-24 px-6">
+    // Pinned to the light palette the way the landing sections are (see
+    // _components/FeatureCards): this page sits between two of them, so
+    // following the viewer's dark mode would make it the one dark panel in
+    // the marketing flow. Values are the :root light tokens from globals.css.
+    <section className="bg-background py-24 px-6 scheme-light [--background:#fafafa] [--color-background:#fafafa] [--foreground:#08090a] [--color-foreground:#08090a] [--card:#ffffff] [--color-card:#ffffff] [--card-foreground:#08090a] [--color-card-foreground:#08090a] [--muted-foreground:#62666d] [--color-muted-foreground:#62666d] [--border:#e2e4e7] [--color-border:#e2e4e7] [--input:#ffffff] [--color-input:#ffffff] [--primary:#5e6ad2] [--color-primary:#5e6ad2] [--primary-foreground:#ffffff] [--color-primary-foreground:#ffffff] [--ring:#5e6ad2] [--color-ring:#5e6ad2]">
       <div className="mx-auto max-w-5xl">
         <div className="mx-auto max-w-4xl">
           <div className="text-center">

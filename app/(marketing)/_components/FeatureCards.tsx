@@ -95,7 +95,7 @@ function ParticleCanvas() {
 
 export default function FeatureCards() {
   return (
-    <section className="@container bg-background py-24 [--background:#fafafa] [--color-background:#fafafa] [--foreground:#08090a] [--color-foreground:#08090a] [--muted-foreground:#62666d] [--color-muted-foreground:#62666d] [--border:#e2e4e7] [--color-border:color-mix(in_oklab,#000_7.5%,transparent)] [--primary:#4f46e5] [--color-primary:#4f46e5] [--card:#ffffff] [--color-card:#ffffff] [--card-foreground:#08090a] [--color-card-foreground:#08090a] [--illustration:#f7f8f8] [--color-illustration:#f7f8f8] [--border-illustration:#e2e4e7] [--color-border-illustration:#e2e4e7] [--muted:#f7f8f8] [--color-muted:#f7f8f8] scheme:light">
+    <section className="@container bg-background py-24 [--background:#fafafa] [--color-background:#fafafa] [--foreground:#08090a] [--color-foreground:#08090a] [--muted-foreground:#62666d] [--color-muted-foreground:#62666d] [--border:#e2e4e7] [--color-border:color-mix(in_oklab,#000_7.5%,transparent)] [--primary:#4f46e5] [--color-primary:#4f46e5] [--card:#ffffff] [--color-card:#ffffff] [--card-foreground:#08090a] [--color-card-foreground:#08090a] [--illustration:#f7f8f8] [--color-illustration:#f7f8f8] [--border-illustration:#e2e4e7] [--color-border-illustration:#e2e4e7] [--muted:#f7f8f8] [--color-muted:#f7f8f8] scheme-light">
       <h2 className="sr-only">Features</h2>
       <div className="mx-auto w-full max-w-5xl px-6">
         <div className="@xl:grid-cols-2 @3xl:grid-cols-6 grid gap-3">
