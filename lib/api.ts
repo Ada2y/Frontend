@@ -544,6 +544,35 @@ export interface CheckResult {
   correction_pose: CorrectionPose | null;
 }
 
+// --- Help assistant (RAG over Ada2y's own documentation) ---
+
+/** A previous exchange, replayed by the client so a follow-up like "and the
+ * deadlift?" resolves. The conversation is not stored server-side. */
+export interface HelpTurn {
+  question: string;
+  answer?: string | null;
+}
+
+/** A corpus passage the answer was grounded in, so the reader can check it. */
+export interface HelpSource {
+  document_id: string;
+  title: string;
+  excerpt: string;
+  score: number;
+}
+
+export interface HelpAnswer {
+  answer_en: string;
+  answer_ar: string;
+  /** False when the assistant refused, or when nothing in the corpus was close
+   * enough to answer from. Sources are empty in that case by design. */
+  used_context: boolean;
+  sources: HelpSource[];
+  /** True when the reply is documentation quoted verbatim rather than written
+   * (no LLM configured server-side). */
+  extractive: boolean;
+}
+
 export interface PosePoint {
   name: string;
   x: number;
@@ -1433,6 +1462,21 @@ export class ApiClient {
 
   static getTrends(videoId: string) {
     return request<TrendsResult>(`/videos/${videoId}/trends`);
+  }
+
+  // --- Help assistant ---
+
+  /** Real LLM call behind a vector search - a multi-second request.
+   *
+   * Refusals (off-topic, medical, prompt injection) come back as a normal 200
+   * with the refusal as the answer, not as an error: they are a reply in the
+   * conversation, and a 4xx would render "I can't help with that" as a broken
+   * request. */
+  static askHelp(question: string, history: HelpTurn[] = []) {
+    return request<HelpAnswer>('/help/chat', {
+      method: 'POST',
+      body: JSON.stringify({question, history})
+    });
   }
 
   // --- Notifications ---
