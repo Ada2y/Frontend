@@ -20,6 +20,7 @@ import {
   BookOpen,
   Bot,
   ChevronDown,
+  CloudOff,
   Languages,
   Loader2,
   MessageCircle,
@@ -116,11 +117,18 @@ function AnswerBubble({exchange, arabic}: {exchange: Exchange; arabic: boolean})
 
   return (
     <div className="rounded-xl rounded-tl-sm border border-border bg-muted/40 p-3">
-      {!answer.used_context && (
-        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-warning">
-          <ShieldCheck className="size-3" />
-          Not covered by the Ada2y documentation
+      {answer.error ? (
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-danger">
+          <CloudOff className="size-3" />
+          Couldn&apos;t reach the assistant
         </p>
+      ) : (
+        !answer.used_context && (
+          <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-warning">
+            <ShieldCheck className="size-3" />
+            Not covered by the Ada2y documentation
+          </p>
+        )
       )}
       {answer.extractive && (
         <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
