@@ -1,14 +1,27 @@
 export default function ContactPage() {
+  const fieldClasses =
+    'placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md bg-background px-3 py-1 text-sm text-foreground shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50';
+  const labelClasses = 'text-muted-foreground block text-left text-sm font-medium leading-none';
+
   return (
-    // Pinned to the light palette the way the landing sections are (see
-    // _components/FeatureCards): this page sits between two of them, so
-    // following the viewer's dark mode would make it the one dark panel in
-    // the marketing flow. Values are the :root light tokens from globals.css.
-    <section className="bg-background py-24 px-6 scheme-light [--background:#fafafa] [--color-background:#fafafa] [--foreground:#08090a] [--color-foreground:#08090a] [--card:#ffffff] [--color-card:#ffffff] [--card-foreground:#08090a] [--color-card-foreground:#08090a] [--muted-foreground:#62666d] [--color-muted-foreground:#62666d] [--border:#e2e4e7] [--color-border:#e2e4e7] [--input:#ffffff] [--color-input:#ffffff] [--primary:#5e6ad2] [--color-primary:#5e6ad2] [--primary-foreground:#ffffff] [--color-primary-foreground:#ffffff] [--ring:#5e6ad2] [--color-ring:#5e6ad2]">
-      <div className="mx-auto max-w-5xl">
+    // theme-light, the same wrapper the auth pages use, rather than a pile of
+    // [--token:#hex] utilities. Redefining the tokens on this element is not
+    // enough on its own: body sets text-foreground, so `color` is computed once
+    // against the dark token and inherited down as white. .theme-light also
+    // re-declares `color`, which is what actually darkens the headings and
+    // labels here - they carry no colour class of their own.
+    <section className="theme-light selection:bg-foreground/10 selection:text-foreground relative bg-background px-6 py-24">
+      {/* The same indigo wash as the login page - the logo's own hue - so the
+          white card has something to lift off of instead of sitting flat on
+          the section background. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(80rem_45rem_at_50%_-15%,rgba(94,106,210,0.12),transparent_65%)]"
+      />
+      <div className="relative mx-auto max-w-5xl">
         <div className="mx-auto max-w-4xl">
           <div className="text-center">
-            <h1 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">
+            <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
               Contact us
             </h1>
             <p className="text-muted-foreground mt-4 text-balance text-lg">
@@ -16,38 +29,32 @@ export default function ContactPage() {
             </p>
           </div>
 
-          <div className="bg-card text-card-foreground shadow-black/6.5 rounded-xl ring-1 ring-foreground/10 shadow-xl mx-auto mt-12 flex max-w-xl flex-col p-8 md:p-12">
-            <h2 className="text-foreground font-medium">Talk to our team</h2>
+          <div className="mx-auto mt-12 flex max-w-xl flex-col rounded-2xl bg-card p-8 text-card-foreground shadow-[0_1px_2px_rgba(8,9,10,0.04),0_12px_32px_-12px_rgba(8,9,10,0.16)] ring-1 ring-foreground/[0.06] md:p-12">
+            <h2 className="font-medium text-foreground">Talk to our team</h2>
             <p className="text-muted-foreground mt-2 text-sm">
               Fill out the form and we&apos;ll be in touch within 24 hours.
             </p>
-            <form className="space-y-6 mt-12">
+            <form className="mt-12 space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium leading-none block text-left"
-                    htmlFor="first-name"
-                  >
+                  <label className={labelClasses} htmlFor="first-name">
                     First name
                   </label>
                   <input
                     type="text"
-                    className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className={fieldClasses}
                     id="first-name"
                     placeholder="John"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium leading-none block text-left"
-                    htmlFor="last-name"
-                  >
+                  <label className={labelClasses} htmlFor="last-name">
                     Last name
                   </label>
                   <input
                     type="text"
-                    className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className={fieldClasses}
                     id="last-name"
                     placeholder="Doe"
                     required
@@ -55,41 +62,35 @@ export default function ContactPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium leading-none block text-left" htmlFor="email">
+                <label className={labelClasses} htmlFor="email">
                   Professional Email
                 </label>
                 <input
                   type="email"
-                  className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className={fieldClasses}
                   id="email"
                   placeholder="name@company.com"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label
-                  className="text-sm font-medium leading-none block text-left"
-                  htmlFor="company"
-                >
+                <label className={labelClasses} htmlFor="company">
                   Company
                 </label>
                 <input
                   type="text"
-                  className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md bg-input px-3 py-1 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className={fieldClasses}
                   id="company"
                   placeholder="Company Name"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label
-                  className="text-sm font-medium leading-none block text-left"
-                  htmlFor="message"
-                >
+                <label className={labelClasses} htmlFor="message">
                   Message
                 </label>
                 <textarea
-                  className="placeholder:text-muted-foreground/75 selection:bg-primary selection:text-primary-foreground flex w-full rounded-md bg-input px-3 py-2 text-sm shadow-sm outline-none ring-1 ring-foreground/10 transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-foreground/35 focus-visible:ring-3 focus-visible:ring-ring/50 min-h-32"
+                  className={`${fieldClasses} h-auto min-h-32 py-2`}
                   id="message"
                   placeholder="Tell us about your project..."
                   rows={7}
@@ -97,7 +98,7 @@ export default function ContactPage() {
                 />
               </div>
               <button
-                className="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none active:scale-98 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 shadow-md shadow-black/10 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                className="cursor-pointer inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-md shadow-black/10 transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-98 disabled:pointer-events-none disabled:opacity-50"
                 type="submit"
               >
                 Send message
@@ -109,24 +110,30 @@ export default function ContactPage() {
             <div className="flex flex-col space-y-2.5 p-6 md:p-12">
               <h2 className="text-muted-foreground text-sm font-medium">Collaborate</h2>
               <a
-                className="font-medium hover:underline hover:text-primary"
+                className="font-medium text-foreground hover:text-primary hover:underline"
                 href="mailto:contact@ada2y.com"
               >
                 contact@ada2y.com
               </a>
-              <a className="font-medium hover:underline hover:text-primary" href="tel:+1234567890">
+              <a
+                className="font-medium text-foreground hover:text-primary hover:underline"
+                href="tel:+1234567890"
+              >
                 +1 234 567 890
               </a>
             </div>
             <div className="flex flex-col space-y-2.5 p-6 md:p-12">
               <h2 className="text-muted-foreground text-sm font-medium">Press</h2>
               <a
-                className="font-medium hover:underline hover:text-primary"
+                className="font-medium text-foreground hover:text-primary hover:underline"
                 href="mailto:press@ada2y.com"
               >
                 press@ada2y.com
               </a>
-              <a className="font-medium hover:underline hover:text-primary" href="tel:+1234567890">
+              <a
+                className="font-medium text-foreground hover:text-primary hover:underline"
+                href="tel:+1234567890"
+              >
                 +1 234 567 890
               </a>
             </div>
